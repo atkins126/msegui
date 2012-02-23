@@ -21,7 +21,7 @@ const
  defaultscrollbarwidth = 15;
  defaultpagesizeconst = 0.1;
  defaultpagesize: real = defaultpagesizeconst;
- defaultbuttonminlength = 11;//8;
+ defaultbuttonminlength = 45;//8;
  defaultscrollbarcolorpattern = cl_scrollbarpattern;
  defaultscrollbarcolorpatternclicked = cl_scrollbarpatternclicked;
  repeatdelaytime = 500000; //0.5s
