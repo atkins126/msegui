@@ -21,7 +21,8 @@ uses
  msedrawtext,msetimer;
 
 const
- defaulttaboptionswidget = defaultoptionswidgetmousewheel + 
+ cl_active = colorty($6CB6EB);
+ defaulttaboptionswidget = defaultoptionswidgetmousewheel +
                                  [ow_subfocus{,ow_fontglyphheight}];
  defaulttaboptionsskin = defaultoptionsskin + [osk_colorcaptionframe];
  defaultcaptiondist = 1;
