@@ -1111,7 +1111,7 @@ var
        with tabchars[int4] do begin
         int2:= index;
         int5:= pos.y - font.ascent div 2;
-        int6:= x - int3 div 2 + 1;
+        int6:= x - int3 {div 2} + 3;
         if (tf_showtabs in flags) and (kind <> tabulatorkindty(-1)) and
                                     not xyswapped and not reversed then begin
          drawline(mp(int6 - 3,int5),mp(int6,int5),font.color);
