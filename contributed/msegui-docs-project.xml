@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<docproject>
+  <packages>
+    <!-- Multiple packages can be entered. 
+         If only one is specified, it is selected. 
+         "name" is a mandatory attribute
+         a "units" tag is required, and a "descriptions" tag as well
+    -->
+    <package name="msegui" output="msegui.ipf" contentfile="fpgui.cnt">
+<!--
+    <package name="msegui" output="msegui.ipf" contentfile="fpgui.cnt">
+    <package name="msegui" output="html/" contentfile="msegui.cnt">
+-->
+      <!-- All input files, one "unit" tag per unit -->
+      <units>
+        <!-- "file" is a mandatory attribute, "options" is not mandatory -->
+        <!-- <unit file="../src/corelib/fpg_base.pas" options="-Fi../src -Fu../src/corelib/x11/ -Fi../src/corelib/x11/ -Fu../src/gui/ -Fu../src/corelib/"/>  -->
+
+        <!-- undocumented units -->
+        <unit file="../lib/common/kernel/msetypes.pas" options="-dmse_with_ifi -Fi../lib/common/kernel -Fu../lib/common/kernel"/>
+
+        <unit file="../lib/common/kernel/msearrayprops.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msearrayutils.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msebintree.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msebits.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msebucketlist.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/mseclasses.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/mseconsts.pas" options="-Fu../lib/common/kernel"/>
+<!--        
+        <unit file="../lib/common/kernel/mseactions.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/mseapplication.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/mseact.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msearrayprops.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msearrayutils.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msebintree.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msebits.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/msebucketlist.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/mseclasses.pas" options="-Fu../lib/common/kernel"/>
+        <unit file="../lib/common/kernel/mseconsts.pas" options="-Fu../lib/common/kernel"/>
+-->
+<!--
+        <unit file="../lib/common/kernel/" options="-Fu../lib/common/kernel"/>
+-->
+
+      </units>
+      <descriptions>
+        <!-- Description files here. One "description" tag per file.
+            "file" is the only mandatory attribute -->
+<!--
+         <description file="xml/test.xml"/>  
+-->
+      </descriptions>
+    </package>
+  </packages>
+  <options>
+    <!-- All command-line options can be specified here with the same name
+         and value as on the actual command-line. Boolean options must have
+         a value of 'true', '1' or 'yes' -->
+    <option name="format" value="ipf"/>
+<!--
+    <option name="format" value="ipf"/>
+    <option name="format" value="html"/>
+    <option name="format" value="rtf"/>
+    <option name="format" value="chm"/>
+-->
+    <option name="hide-protected" value="true"/>
+    <option name="duplinkeddoc" value="true"/>
+<!--
+    <option name="footer-date" value="yyyy-mm-dd"/>
+-->
+  </options>
+</docproject>
+
