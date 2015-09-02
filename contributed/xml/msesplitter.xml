@@ -9,14 +9,13 @@
 the size and position of the leading linked widgets, normally the
 linkleft/linktop widget if options spao_glueright/spao_gluebottom are not
 set.</p>
-<p>textendingwidget, tspacer, tsplitter and tlayouter adjust their size according 
+<p>TExpandingWidget, tspacer, tsplitter and tlayouter adjust their size according
 to the settings of optionsscale and the size and position of embedded 
 widgets.</p>
 </descr>
 <seealso>
   <link id="TSplitter"/>
-  <link id="TSpacer"/>
-  <link id="TExtendingWidget"/>
+  <link id="TExpandingWidget"/>
 </seealso>
 </element>
 
@@ -24,14 +23,13 @@ widgets.</p>
 <short>TSplitter connects widgets by the link* properties</short>
 <descr><p><printshort id="tsplitter"/>. There size/position is
 defined by the position of tsplitter.</p>
-<p>textendingwidget, tspacer, tsplitter and tlayouter adjust their size according 
+<p>TExpandingWidget, tspacer, tsplitter and tlayouter adjust their size according
 to the settings of optionsscale and the size and position of embedded 
 widgets.</p>
 </descr>
 <seealso>
-  <link id="TSplitter"/>
   <link id="TSpacer"/>
-  <link id="TExtendingWidget"/>
+  <link id="TExpandingWidget"/>
 </seealso>
 </element>
 
@@ -39,14 +37,14 @@ widgets.</p>
 <short>TLayouter arranges embedded widgets</short>
 <descr><p><printshort id="tlayouter"/> according to the settings of
 optionslayout, align_* and place_* properties.</p>
-<p>textendingwidget, tspacer, tsplitter and tlayouter adjust their size according 
+<p>TExpandingWidget, tspacer, tsplitter and tlayouter adjust their size according
 to the settings of optionsscale and the size and position of embedded 
 widgets.</p>
 </descr>
 <seealso>
   <link id="TSplitter"/>
   <link id="TSpacer"/>
-  <link id="TExtendingWidget"/>
+  <link id="TExpandingWidget"/>
 </seealso>
 </element>
 
