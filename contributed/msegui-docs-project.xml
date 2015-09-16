@@ -351,6 +351,7 @@ a "units" tag is required, and a "descriptions" tag as well
   mandatory attribute.
 -->
 	<description file="xml/msesplitter.xml"/>
+	<description file="xml/mselistbrowser.xml"/>
 
 
 </descriptions>
