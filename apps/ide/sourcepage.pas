@@ -672,7 +672,7 @@ begin
           end;
           page1:= sourcefo.showsourcepos(pos2,true,cellpos1);
           if page1 <> nil then begin
-           page1.grid.showcell(makegridcoord(1,pos1.pos.row));
+           page1.grid.showcell(makegridcoord(1,pos1.pos.row-5));
           end;
          end;
         end;
