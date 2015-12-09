@@ -352,6 +352,7 @@ a "units" tag is required, and a "descriptions" tag as well
 -->
 	<description file="xml/msesplitter.xml"/>
 	<description file="xml/mselistbrowser.xml"/>
+	<description file="xml/msegui.xml"/>
 
 
 </descriptions>
