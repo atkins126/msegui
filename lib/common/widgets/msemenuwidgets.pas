@@ -41,6 +41,7 @@ type
   mousepos: pointty;
   options: menulayoutoptionsty;
   sizerect: rectty;
+  frameactivediff: framety;
   cells: menucellinfoarty;
 //  colorglyph: colorty;
   itemframetemplate: tframetemplate;
@@ -98,7 +99,7 @@ type
    procedure fontchanged; override;
    procedure internalcreateframe; override;
    function activateoptionset: boolean;
-   procedure showhint(var info: hintinfoty); override;   
+   procedure showhint(const aid: int32; var info: hintinfoty); override;   
    function trycancelmodal(const newactive: twindow): boolean; override;
    
    procedure release1(const acancelmodal: boolean); virtual;
@@ -376,9 +377,11 @@ begin
   else begin
    frame2:= nullframe;
   end;
+  frameactivediff:= frame2;
   if itemframetemplate <> nil then begin
    with tframetemplate1(itemframetemplate) do begin
     frame1:= paintframe;
+    subframe1(frameactivediff,frame1);
     if frame1.left > frame2.left then begin
      frame2.left:= frame1.left;
     end;
@@ -747,7 +750,7 @@ begin
      ca.colorglyph:= colorglyphactive;
      if itemframetemplateactive <> nil then begin
       itemframetemplateactive.paintbackground(canvas,ca.dim,
-         combineframestateflags(shs_disabled in state,false,
+         combineframestateflags(shs_disabled in state,false,false,
                                                shs_clicked in state,false));
       if ca.colorglyph = cl_default then begin
        ca.colorglyph:= itemframetemplateactive.colorglyph;
@@ -756,11 +759,13 @@ begin
      face:= itemfaceactive;
      ca.font:= fontactive;
      state:= state + [shs_focused,shs_active,shs_focusanimation];
+     deflaterect1(ca.dim,frameactivediff);
      drawmenubutton(canvas,buttoninfo,po2);
      if itemframetemplateactive <> nil then begin
       itemframetemplateactive.paintoverlay(canvas,ca.dim,
-            combineframestateflags(false,true,shs_clicked in state,false));
+            combineframestateflags(false,true,true,shs_clicked in state,false));
      end;
+     inflaterect1(ca.dim,frameactivediff);
     end
     else begin
      if (shs_separator in state) and (separatorframetemplate <> nil) then begin
@@ -775,7 +780,7 @@ begin
      else begin
       if itemframetemplate <> nil then begin
        itemframetemplate.paintbackground(canvas,ca.dim,
-                combineframestateflags(shs_disabled in state,false,
+                combineframestateflags(shs_disabled in state,false,false,
                                                shs_clicked in state,false));
        if ca.colorglyph = cl_default then begin
         ca.colorglyph:= itemframetemplate.colorglyph;
@@ -790,7 +795,7 @@ begin
       drawmenubutton(canvas,buttoninfo,po1);
       if itemframetemplate <> nil then begin
            itemframetemplate.paintoverlay(canvas,ca.dim,
-                  combineframestateflags(shs_disabled in state,false,
+                  combineframestateflags(shs_disabled in state,false,false,
                   shs_clicked in state,false));
       end;
      end;
@@ -1723,20 +1728,14 @@ begin
  result:= (fmenucomp <> nil) and (mo_activate in fmenucomp.options);
 end;
 
-procedure tpopupmenuwidget.showhint(var info: hintinfoty);
+procedure tpopupmenuwidget.showhint(const aid: int32; var info: hintinfoty);
 begin
  inherited;
  with flayout do begin
-  if (activeitem >= 0) and tmenuitem1(menu.items[activeitem]).canshowhint then begin
+  if (activeitem >= 0) and 
+                     tmenuitem1(menu.items[activeitem]).canshowhint then begin
    info.caption:= menu.items[activeitem].hint;
   end;
-  {
-  else begin
-   if tmenuitem1(menu).canshowhint then begin
-    info.caption:= menu.hint;
-   end;
-  end;
-  }
  end;
 end;
 

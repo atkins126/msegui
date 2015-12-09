@@ -98,7 +98,8 @@ procedure writefpcresourcestrings(const outstream: ttextstream;
 
 implementation
 uses
- sysutils,mseformatstr,msearrayutils,typinfo,msebits,msewidgets;
+ sysutils,mseformatstr,msearrayutils,typinfo,msebits,msewidgets,msejson,
+ msefileutils,msesys;
 
 type
  treader1 = class(treader);
@@ -140,17 +141,17 @@ function tpropinfonode.valuetext: msestring;
 begin
  case info.valuetype of
   vaint8,vaint16,vaint32: begin
-   result:= inttostr(info.integervalue);
+   result:= inttostrmse(info.integervalue);
   end;
   vaint64: begin
-   result:= inttostr(info.int64value);
+   result:= inttostrmse(info.int64value);
   end;
   vaSingle,vaCurrency,vaDate,vaExtended: begin
-   result:= floattostr(info.realvalue);
+   result:= realtostrmse(info.realvalue);
   end;
 //  vaset,vaident,vastring,valstring: begin
   vaset,vaident: begin
-   result:= info.stringvalue;
+   result:= msestring(info.stringvalue);
   end;
   vastring,valstring,vawstring,vautf8string: begin
    result:= info.msestringvalue;
@@ -215,7 +216,7 @@ end;
 procedure tpropinfonode.nodetoitem(const listitem: ttreelistitem);
 begin
  with tpropinfoitem(listitem) do begin
-  fcaption:= self.info.name;
+  fcaption:= msestring(self.info.name);
   node:= self;
  end;
 end;
@@ -712,29 +713,83 @@ begin
  outstream.CopyFrom(instream,instream.Size-instream.position);
 end;
 
-procedure writefpcresourcestrings(const outstream: ttextstream;
-                  const node: tpropinfonode);
+procedure getjsonresourcestrings(var json: jsonvaluety; 
+                                               const node: tpropinfonode);
 var
- int1: integer;
  node1,node2: tpropinfonode;
- str1: string;
+ mstr1: msestring;
+ int1: int32;
 begin
  for int1:= 0 to node.count - 1 do begin
   node1:= node[int1];
   with node1.info do begin
    if valuetype = vawstring then begin
     node2:= tpropinfonode(node1.fparent);
-    str1:= name;
+    mstr1:= msestring(name);
     repeat
-     str1:= node2.info.name + '.' + str1;
+     mstr1:= msestring(node2.info.name) + '.' + mstr1;
      node2:= tpropinfonode(node2.fparent);
     until (node2.fparent = nil) or (node2.parent.parent = nil);
-    outstream.writeln('');
-    outstream.writeln('# hash value = '+inttostr(hash(msestringvalue)));
-    outstream.writeln(str1+'='+stringtopascalstring(msestringvalue));
+    jsonadditems(jsonaddvalues(json,[nil])^,
+          ['hash','name','value'],
+                         [hash(stringtoutf8ansi(msestringvalue)),mstr1,
+                                                               msestringvalue]);
    end
    else begin
-    writefpcresourcestrings(outstream,node1);
+    getjsonresourcestrings(json,node1);
+   end;
+  end;
+ end;
+end;
+
+procedure writefpcresourcestrings(const outstream: ttextstream;
+                  const node: tpropinfonode);
+var
+ int1: integer;
+ node1,node2: tpropinfonode;
+ str1,str2: string;
+ mstr1: msestring;
+ po1: pmsechar;
+ i1: int32;
+ json: jsonvaluety;
+ pj: pjsonvaluety;
+begin
+ if fileext(outstream.filename) = 'rsj' then begin
+  jsonvalueinit(json);
+  try
+   pj:= jsonadditems(json,['version','strings'],[1,nil]);
+   getjsonresourcestrings(pj^,node);
+   syserror(jsonencode(json,outstream));
+  finally
+   jsonvaluefree(json);
+  end;
+ end
+ else begin
+  for int1:= 0 to node.count - 1 do begin
+   node1:= node[int1];
+   with node1.info do begin
+    if valuetype = vawstring then begin
+     node2:= tpropinfonode(node1.fparent);
+     str1:= name;
+     repeat
+      str1:= node2.info.name + '.' + str1;
+      node2:= tpropinfonode(node2.fparent);
+     until (node2.fparent = nil) or (node2.parent.parent = nil);
+     outstream.writeln('');
+     outstream.writeln('# hash value = '+
+                      inttostr(hash(ansistring(msestringvalue))));
+     str2:= ansistring(msestringvalue);
+     setlength(mstr1,length(str2));
+     po1:= pmsechar(mstr1);
+     for i1:= 1 to length(mstr1) do begin
+      po1^:= msechar(byte(str2[i1])); //use locale encoding
+      inc(po1);
+     end;
+     outstream.writeln(str1+'='+stringtopascalstring(mstr1));
+    end
+    else begin
+     writefpcresourcestrings(outstream,node1);
+    end;
    end;
   end;
  end;
@@ -744,7 +799,7 @@ procedure tpropinfonode.dotransferlang(const sender: ttreenode);
 
  procedure doerror(mess: string);
  begin
-  showmessage(mess);
+  showmessage(msestring(mess));
  end;
 
 begin

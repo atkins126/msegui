@@ -121,6 +121,8 @@ type
   svitemframe: tframecomp;
   svitemfaceactive: tfacecomp;
   svitemframeactive: tframecomp;
+  svfont: tfontcomp;
+  svfontactive: tfontcomp;
   svseparatorframe: tframecomp;
   svcheckboxframe: tframecomp;
 //  options: skinmenuoptionsty;
@@ -600,6 +602,8 @@ type
    procedure setpopupmenu_itemframe(const avalue: tframecomp);
    procedure setpopupmenu_itemfaceactive(const avalue: tfacecomp);
    procedure setpopupmenu_itemframeactive(const avalue: tframecomp);
+   procedure setpopupmenu_font(const avalue: tfontcomp);
+   procedure setpopupmenu_fontactive(const avalue: tfontcomp);
    procedure setpopupmenu_separatorframe(const avalue: tframecomp);
    procedure setpopupmenu_checkboxframe(const avalue: tframecomp);
    
@@ -609,6 +613,8 @@ type
    procedure setmainmenu_itemframe(const avalue: tframecomp);
    procedure setmainmenu_itemfaceactive(const avalue: tfacecomp);
    procedure setmainmenu_itemframeactive(const avalue: tframecomp);
+   procedure setmainmenu_font(const avalue: tfontcomp);
+   procedure setmainmenu_fontactive(const avalue: tfontcomp);
    procedure setmainmenu_separatorframe(const avalue: tframecomp);
    procedure setmainmenu_checkboxframe(const avalue: tframecomp);
    procedure setmainmenu_popupface(const avalue: tfacecomp);
@@ -617,6 +623,10 @@ type
    procedure setmainmenu_popupitemframe(const avalue: tframecomp);
    procedure setmainmenu_popupitemfaceactive(const avalue: tfacecomp);
    procedure setmainmenu_popupitemframeactive(const avalue: tframecomp);
+   procedure setmainmenu_popupfont(const avalue: tfontcomp);
+   procedure setmainmenu_popupfontactive(const avalue: tfontcomp);
+   procedure setmainmenu_popupseparatorframe(const avalue: tframecomp);
+   procedure setmainmenu_popupcheckboxframe(const avalue: tframecomp);
   protected
    procedure handlewidget(const askin: skininfoty;
                            const acolor: pwidgetcolorinfoty = nil); override;
@@ -979,6 +989,11 @@ type
                                       write setpopupmenu_itemfaceactive;
    property popupmenu_itemframeactive: tframecomp 
            read fpopupmenu.svitemframeactive write setpopupmenu_itemframeactive;
+   property popupmenu_font: tfontcomp read fpopupmenu.svfont 
+                                 write setpopupmenu_font;
+   property popupmenu_fontactive: tfontcomp 
+                                 read fpopupmenu.svfontactive
+                                 write setpopupmenu_fontactive;
    property popupmenu_separatorframe: tframecomp read 
                  fpopupmenu.svseparatorframe write setpopupmenu_separatorframe;
    property popupmenu_checkboxframe: tframecomp read fpopupmenu.svcheckboxframe 
@@ -1001,12 +1016,17 @@ type
    property mainmenu_itemframeactive: tframecomp 
                                  read fmainmenu.svmain.svitemframeactive 
                                  write setmainmenu_itemframeactive;
+   property mainmenu_font: tfontcomp read fmainmenu.svmain.svfont 
+                                 write setmainmenu_font;
+   property mainmenu_fontactive: tfontcomp read fmainmenu.svmain.svfontactive
+                                 write setmainmenu_fontactive;                         
    property mainmenu_separatorframe: tframecomp 
                                  read fmainmenu.svmain.svseparatorframe 
                                  write setmainmenu_separatorframe;
    property mainmenu_checkboxframe: tframecomp 
                                  read fmainmenu.svmain.svcheckboxframe 
                                  write setmainmenu_checkboxframe;
+
    property mainmenu_popupface: tfacecomp read fmainmenu.svpopup.svface 
                                  write setmainmenu_popupface;
    property mainmenu_popupframe: tframecomp read fmainmenu.svpopup.svframe 
@@ -1022,12 +1042,17 @@ type
    property mainmenu_popupitemframeactive: tframecomp 
                                  read fmainmenu.svpopup.svitemframeactive 
                                  write setmainmenu_popupitemframeactive;
+   property mainmenu_popupfont: tfontcomp read fmainmenu.svpopup.svfont 
+                                 write setmainmenu_popupfont;
+   property mainmenu_popupfontactive: tfontcomp 
+                                 read fmainmenu.svpopup.svfontactive
+                                 write setmainmenu_popupfontactive;
    property mainmenu_popupseparatorframe: tframecomp 
                                  read fmainmenu.svpopup.svseparatorframe 
-                                 write setpopupmenu_separatorframe;
+                                 write setmainmenu_popupseparatorframe;
    property mainmenu_popupcheckboxframe: tframecomp 
                                  read fmainmenu.svpopup.svcheckboxframe 
-                                 write setpopupmenu_checkboxframe;
+                                 write setmainmenu_popupcheckboxframe;
  end;
 
  skincontrollerarty = array of tcustomskincontroller;
@@ -1063,6 +1088,7 @@ type
  tframe1 = class(tcustomframe);
  tcustomframe1 = class(tcustomframe);
  ttabs1 = class(ttabs);
+ tmenuitem1 = class(tmenuitem);
 var
  fhandler: tskinhandler;
 
@@ -1841,6 +1867,20 @@ begin
              (itemframetemplateactive = nil) then begin
    itemframetemplateactive:= ainfo.svitemframeactive;
   end;
+  if menu <> nil then begin
+   with tmenuitem1(menu) do begin;
+    if (ainfo.svfont <> nil) and
+               ((ffont = nil) or (ffont.template = nil)) then begin
+     createfont();
+     ffont.template:= ainfo.svfont;
+    end;
+    if (ainfo.svfontactive <> nil) and
+         ((ffontactive = nil) or (ffontactive.template = nil)) then begin
+     createfontactive();
+     ffontactive.template:= ainfo.svfontactive;
+    end;
+   end;
+  end;
   if (ainfo.svseparatorframe <> nil) and
              (separatorframetemplate = nil) then begin
    separatorframetemplate:= ainfo.svseparatorframe;
@@ -1854,6 +1894,8 @@ end;
 
 procedure tcustomskincontroller.setmainmenuskin(const instance: tcustommainmenu;
                              const ainfo: mainmenuskininfoty);
+var
+ i1,i2: int32;
 begin
 {$warnings off}
  setpopupmenuskin(tpopupmenu(instance),ainfo.svmain);
@@ -1886,6 +1928,36 @@ begin
   if (svpopup.svcheckboxframe <> nil) and
              (popupcheckboxframetemplate = nil) then begin
    popupcheckboxframetemplate:= svpopup.svcheckboxframe;
+  end;
+  if menu <> nil then begin
+   if svpopup.svfont <> nil then begin
+    for i1:= 0 to menu.count-1 do begin
+     with tmenuitem1(menu[i1]) do begin;
+      for i2:= 0 to submenu.count - 1 do begin
+       with tmenuitem1(submenu[i2]) do begin;
+        if ((ffont = nil) or (ffont.template = nil)) then begin
+         createfont();
+         ffont.template:= svpopup.svfont;
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+   if svpopup.svfontactive <> nil then begin
+    for i1:= 0 to menu.count-1 do begin
+     with tmenuitem1(menu[i1]) do begin;
+      for i2:= 0 to submenu.count - 1 do begin
+       with tmenuitem1(submenu[i2]) do begin;
+        if ((ffontactive = nil) or (ffontactive.template = nil)) then begin
+         createfontactive();
+         ffontactive.template:= svpopup.svfontactive;
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
   end;
  end;
 end;
@@ -2589,6 +2661,16 @@ begin
  setlinkedvar(avalue,tmsecomponent(fpopupmenu.svitemframeactive));
 end;
 
+procedure tskincontroller.setpopupmenu_font(const avalue: tfontcomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fpopupmenu.svfont));
+end;
+
+procedure tskincontroller.setpopupmenu_fontactive(const avalue: tfontcomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fpopupmenu.svfontactive));
+end;
+
 procedure tskincontroller.setpopupmenu_separatorframe(const avalue: tframecomp);
 begin
  setlinkedvar(avalue,tmsecomponent(fpopupmenu.svseparatorframe));
@@ -2629,6 +2711,16 @@ begin
  setlinkedvar(avalue,tmsecomponent(fmainmenu.svmain.svitemframeactive));
 end;
 
+procedure tskincontroller.setmainmenu_font(const avalue: tfontcomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fmainmenu.svmain.svfont));
+end;
+
+procedure tskincontroller.setmainmenu_fontactive(const avalue: tfontcomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fmainmenu.svmain.svfontactive));
+end;
+
 procedure tskincontroller.setmainmenu_separatorframe(const avalue: tframecomp);
 begin
  setlinkedvar(avalue,tmsecomponent(fmainmenu.svmain.svseparatorframe));
@@ -2667,6 +2759,28 @@ end;
 procedure tskincontroller.setmainmenu_popupitemframeactive(const avalue: tframecomp);
 begin
  setlinkedvar(avalue,tmsecomponent(fmainmenu.svpopup.svitemframeactive));
+end;
+
+procedure tskincontroller.setmainmenu_popupfont(const avalue: tfontcomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fmainmenu.svpopup.svfont));
+end;
+
+procedure tskincontroller.setmainmenu_popupfontactive(const avalue: tfontcomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fmainmenu.svpopup.svfontactive));
+end;
+
+procedure tskincontroller.setmainmenu_popupseparatorframe(
+              const avalue: tframecomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fmainmenu.svpopup.svseparatorframe));
+end;
+
+procedure tskincontroller.setmainmenu_popupcheckboxframe(
+              const avalue: tframecomp);
+begin
+ setlinkedvar(avalue,tmsecomponent(fmainmenu.svpopup.svcheckboxframe));
 end;
 
 procedure tskincontroller.handlewidget(const askin: skininfoty;

@@ -451,6 +451,7 @@ type
                           const event: objecteventty); override;
    function getitems1(const index: integer): tlistitem;
    procedure setitems(const index: integer; const Value: tlistitem); 
+   procedure setcount(const value: integer); override;
    procedure freedata(var data); override;
    procedure removeitem(const aindex: integer); //no free item
    procedure change(const item: tlistitem); reintroduce; overload;
@@ -501,8 +502,12 @@ type
    function nodezone(const point: pointty): cellzonety;
    function getitems(const must: nodestatesty; 
                         const mustnot: nodestatesty): listitemarty;
+   function getindexes(const must: nodestatesty; 
+                        const mustnot: nodestatesty): integerarty;
    function getselecteditems: listitemarty;
+   function getselectedindexes: integerarty;
    function getcheckeditems: listitemarty;
+   function getcheckedindexes: integerarty;
    property items[const index: integer]: tlistitem read getitems1 write setitems;
                     default;
    property imnr_base: integer read fimnr_base write setimnr_base default 0;
@@ -600,6 +605,7 @@ function copylistitems(const asource: listitemarty): listitemarty;
 var
  int1: integer;
 begin
+ result:= nil;
  allocuninitedarray(length(asource),sizeof(pointer),result);
  for int1:= 0 to high(result) do begin
   result[int1]:= listitemclassty(asource[int1].classtype).create(nil);
@@ -1599,10 +1605,17 @@ begin
 end;
 
 procedure tcustomitemlist.nodenotification(const sender: tlistitem;
-                     var ainfo: nodeactioninfoty);
+                                               var ainfo: nodeactioninfoty);
 begin
- if (ainfo.action = na_change) then begin
-  change(sender);
+ if ainfo.action = na_destroying then begin
+  if not deleting then begin
+   deletedata(sender.index);
+  end;
+ end
+ else begin
+  if (ainfo.action = na_change) then begin
+   change(sender);
+  end;
  end;
 end;
 
@@ -1678,8 +1691,8 @@ end;
 
 function tcustomitemlist.add(const aitem: tlistitem): integer;
 begin
- result:= inherited add(aitem);
  aitem.setowner(self);
+ result:= inherited add(aitem);
 end;
 
 procedure tcustomitemlist.add(const aitems: array of msestring);
@@ -1818,14 +1831,50 @@ begin
  setlength(result,int2);
 end;
 
+function tcustomitemlist.getindexes(const must: nodestatesty;
+                               const mustnot: nodestatesty): integerarty;
+var
+ int1: integer;
+ int2: integer;
+ item1: tlistitem;
+ po1: ppointeraty;
+begin
+ result:= nil;
+ int2:= 0;
+ po1:= datapo;
+ for int1:= 0 to count - 1 do begin
+  item1:= tlistitem(po1^[int1]);
+  with item1 do begin
+   if (fstate * must = must) and (fstate * mustnot = []) then begin
+    if int2 > high(result) then begin
+     setlength(result,10+length(result)*2);
+    end;
+    result[int2]:= int1;
+    inc(int2);
+   end;
+  end;
+ end;
+ setlength(result,int2);
+end;
+
 function tcustomitemlist.getselecteditems: listitemarty;
 begin
  result:= getitems([ns_selected],[]);
 end;
 
+function tcustomitemlist.getselectedindexes: integerarty;
+begin
+ result:= getindexes([ns_selected],[]);
+end;
+
 function tcustomitemlist.getcheckeditems: listitemarty;
 begin
  result:= getitems([ns_checked],[]);
+end;
+
+function tcustomitemlist.getcheckedindexes: integerarty;
+begin
+ result:= getindexes([ns_checked],[]);
 end;
 
 function tcustomitemlist.empty(const index: integer): boolean;
@@ -1875,6 +1924,21 @@ end;
 procedure tcustomitemlist.setfonts(const avalue: tfontarrayprop);
 begin
  ffonts.assign(avalue);
+end;
+
+procedure tcustomitemlist.setcount(const value: integer);
+begin
+ if value < fcount then begin
+  inc(fdeleting);
+  try
+   inherited;
+  finally
+   dec(fdeleting);
+  end;
+ end
+ else begin
+  inherited;
+ end;
 end;
 
 function tlistitem.gettop: boolean;

@@ -21,7 +21,7 @@ uses
  msedrawtext,msetimer;
 
 const
- defaulttaboptionswidget = defaultoptionswidget + 
+ defaulttaboptionswidget = defaultoptionswidgetmousewheel + 
                                  [ow_subfocus{,ow_fontglyphheight}];
  defaulttaboptionsskin = defaultoptionsskin + [osk_colorcaptionframe];
  defaultcaptiondist = 1;
@@ -764,7 +764,7 @@ type
    procedure unregisterchildwidget(const child: twidget); override;
    procedure pagechanged(const sender: itabpage);
    procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
-   procedure tabchanged(const synctabindex: boolean);
+   procedure tabchanged(const synctabindex: boolean); virtual;
    procedure loaded; override;
    procedure clientrectchanged; override;
    procedure widgetregionchanged(const sender: twidget); override;

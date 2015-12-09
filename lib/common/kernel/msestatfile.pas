@@ -121,7 +121,7 @@ type
    property filename: filenamety read ffilename write setfilename nodefault;
    property filedir: filenamety read ffiledir write setfiledir;
    property encoding: charencodingty read fencoding write fencoding
-                                                           default ce_utf8n;
+                                                           default ce_utf8;
    property options: statfileoptionsty read foptions write foptions 
                               default defaultstatfileoptions;
    property statfile: tstatfile read fstatfile write setstatfile;
@@ -204,7 +204,7 @@ end;
 constructor tstatfile.create(aowner: tcomponent);
 begin
 // ffilename:= defaultstatfilename;
- fencoding:= ce_utf8n;
+ fencoding:= ce_utf8;
  foptions:= defaultstatfileoptions;
  inherited;
 end;
@@ -405,7 +405,8 @@ end;
 
 function cmpclients(const l,r): integer;
 begin
- result:= statclientinfoty(l).priority - statclientinfoty(r).priority;
+ result:= statclientinfoty(r).priority - statclientinfoty(l).priority;
+                  //highest priority first
 end;
 
 procedure tstatfile.internalreadstat;
@@ -747,7 +748,7 @@ var
  ar1: msestringarty;
 begin
  stream:= ttextstream.Create;
- stream.encoding:= ce_utf8n;
+ stream.encoding:= ce_utf8;
  try
   writestat(stream);
   stream.position:= 0;

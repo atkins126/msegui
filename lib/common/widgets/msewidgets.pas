@@ -140,9 +140,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -150,9 +152,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-   
+}  
    property optionsskin;
 
    property colorclient;
@@ -287,9 +291,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -297,9 +303,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-   
+}  
    property optionsskin;
 
    property sbhorz: tscrollbar read getsbhorz write setsbhorz;
@@ -474,9 +482,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -484,9 +494,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-   
+}  
    property optionsskin;
 
    property caption;
@@ -655,9 +667,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -665,9 +679,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-   
+}   
    property optionsskin;
  
    property caption;
@@ -746,7 +762,7 @@ type
    procedure doonpaint(const canvas: tcanvas); override;
    procedure doafterpaint(const canvas: tcanvas); override;
 
-   procedure showhint(var info: hintinfoty); override;
+   procedure showhint(const aid: int32; var info: hintinfoty); override;
    procedure getpopuppos(var apos: pointty); virtual;
    procedure updatepopupmenu(var amenu: tpopupmenu;
                                    var mouseinfo: mouseeventinfoty); virtual;
@@ -1136,15 +1152,27 @@ type
    constructor create(aowner: tcomponent; transientfor: twindow); reintroduce; overload;
  end;
 
- thintwidget = class(tpopupwidget)
+ const
+  defaultoptionshintwidget = defaultoptionstoplevelwidget + [ow_top];
+  
+type
+ tcustomhintwidget = class(tpopupwidget)
+  public
+   constructor create(const aowner: tcomponent; const transientfor: twindow;
+             var info: hintinfoty; const sender: tobject); virtual; reintroduce;
+  published
+   property optionswidget default defaultoptionshintwidget;
+ end;
+ hintwidgetclassty = class of tcustomhintwidget;
+ 
+ thintwidget = class(tcustomhintwidget)
   private
    fcaption: captionty;
   protected
    procedure dopaintforeground(const canvas: tcanvas); override;
   public
-   constructor create(aowner: tcomponent; transientfor: twindow;
-                             var info: hintinfoty); reintroduce;
-   destructor destroy; override;
+   constructor create(const aowner: tcomponent; const transientfor: twindow;
+                     var info: hintinfoty; const sender: tobject); override;
  end;
 
  tmessagewidget = class(tcaptionwidget)
@@ -2263,7 +2291,7 @@ end;
 
 function tactionsimplebutton.getframestateflags: framestateflagsty;
 begin
- result:= combineframestateflags(not isenabled,active,
+ result:= combineframestateflags(not isenabled,focused,active,
                      shs_mouse in finfo.state,shs_clicked in finfo.state);
  if not (bo_nodefaultframeactive in foptions) and 
                ((shs_default in finfo.state) or focused) then begin
@@ -5191,7 +5219,7 @@ begin
  inherited;
 end;
 
-procedure tactionwidget.showhint(var info: hintinfoty);
+procedure tactionwidget.showhint(const aid: int32; var info: hintinfoty);
 begin
  inherited;
  if canevent(tmethod(fonshowhint)) then begin
@@ -5401,7 +5429,7 @@ constructor ttoplevelwidget.create(aowner: tcomponent);
 begin
  inherited;
  visible:= false;
- optionswidget:= defaultoptionstoplevelwidget;
+ foptionswidget:= defaultoptionstoplevelwidget;
  optionsskin:= defaultcontainerskinoptions;
 // fcolor:= cl_background;
 end;
@@ -5441,6 +5469,7 @@ end;
 constructor tscrollingwidgetnwr.create(aowner: tcomponent);
 begin
  inherited;
+ include(fwidgetstate1,ws1_designactive);
  foptionswidget:= defaultoptionswidgetmousewheel;
  optionsskin:= defaultcontainerskinoptions;
  internalcreateframe;
@@ -5693,15 +5722,19 @@ begin
  end;
 end;
 
-{ thintwidget }
+{ tcustomhintwidget }
 
-constructor thintwidget.create(aowner: tcomponent; transientfor: twindow;
-                 var info: hintinfoty);
+constructor tcustomhintwidget.create(const aowner: tcomponent; 
+                 const transientfor: twindow;
+                 var info: hintinfoty; const sender: tobject);
 var
  rect1,rect2: rectty;
 begin
- fcaption:= info.caption;
  inherited create(aowner,transientfor);
+ foptionswidget:= defaultoptionshintwidget;
+ if transientfor = nil then begin
+  include(foptionswidget,ow_ultratop);
+ end;
  internalcreateframe;
  fframe.levelo:= 1;
  fframe.framei_left:= 1;
@@ -5715,7 +5748,18 @@ begin
  addsize1(rect1.size,fframe.innerframedim);
 // inc(rect1.cx,fframe.innerframedim.cx);
 // inc(rect1.cy,fframe.innerframedim.cy);
- widgetrect:= placepopuprect(transientfor,info.posrect,info.placement,rect1.size);
+ widgetrect:= placepopuprect(transientfor,info.posrect,info.placement,
+                                                                 rect1.size);
+end;
+
+{ thintwidget}
+
+constructor thintwidget.create(const aowner: tcomponent;
+               const transientfor: twindow; var info: hintinfoty;
+               const sender: tobject);
+begin
+ fcaption:= info.caption;
+ inherited;
 end;
 
 procedure thintwidget.dopaintforeground(const canvas: tcanvas);
@@ -5723,11 +5767,6 @@ begin
  inherited;
  drawtext(canvas,fcaption,innerclientrect,[tf_wordbreak],
                                       stockobjects.fonts[stf_hint]);
-end;
-
-destructor thintwidget.destroy;
-begin
- inherited;
 end;
 
 { tmessagewidget }

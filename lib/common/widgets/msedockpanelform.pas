@@ -179,7 +179,8 @@ type
 
  tpanelformdockcontroller = class(tformdockcontroller)
   public
-   constructor create(aintf: idockcontroller);
+   constructor create(const aowner: tcustomdockform);
+//   constructor create(aintf: idockcontroller);
   published
    property optionsdock default defaultoptionsdock;
  end;
@@ -235,7 +236,11 @@ begin
   end;
   for int1:= 0 to high(ar1) do begin
    try
-    newpanel(ansistring(ar1[int1]));
+    with newpanel(ansistring(ar1[int1])) do begin
+     if statfile = self.statfile then begin
+      statreading();
+     end;
+    end;
    except
    end;
   end;
@@ -319,6 +324,9 @@ begin
   updatecaption('');
  end;
  if item1 <> nil then begin
+  if int2 >= fpanellist.count then begin
+   int2:= fpanellist.count-1;
+  end;
   if int2 > item1.count - 2 then begin
    int2:= item1.count - 2;
   end;
@@ -440,7 +448,8 @@ end;
 constructor tdockpanelform.create(aowner: tcomponent; load: boolean);
 begin
  if fdragdock = nil then begin
-  fdragdock:= tpanelformdockcontroller.create(idockcontroller(self));
+//  fdragdock:= tpanelformdockcontroller.create(idockcontroller(self));
+  fdragdock:= tpanelformdockcontroller.create(self);
  end;
  include(fmsecomponentstate,cs_ismodule);
  fscrollbox:= tdockpanelformscrollbox.create(self);
@@ -653,7 +662,8 @@ end;
 
 { tpanelformdockcontroller }
 
-constructor tpanelformdockcontroller.create(aintf: idockcontroller);
+constructor tpanelformdockcontroller.create(const aowner: tcustomdockform);
+//constructor tpanelformdockcontroller.create(aintf: idockcontroller);
 begin
  inherited;
  foptionsdock:= defaultoptionsdock;

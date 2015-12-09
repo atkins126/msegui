@@ -19,16 +19,15 @@ order16=0
 order17=0
 order18=0
 [projectoptions]
-projectdir=/home/mse/packs/standard/git/mseide-msegui/tools
-projectfilename=/home/mse/packs/standard/git/mseide-msegui/tools/form2pas.prj
-mainfile=form2pas.pas
-targetfile=form2pas${EXEEXT}
+projectdir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/templates
+projectfilename=/home/mse/packs/standard/git/mseide-msegui/apps/ide/templates/layoutdockedforms.prj
+mainfile=
+targetfile=
 messageoutputfile=
 makecommand=${COMPILER}
 makedir=
-unitdirs=3
+unitdirs=2
  ${MSELIBDIR}kernel/$TARGETOSDIR/
- ${MSELIBDIR}kernel/
  ${MSELIBDIR}*/
 unitpref=-Fu
 incpref=-Fi
@@ -38,10 +37,10 @@ targpref=-o
 befcommand=0
 aftcommand=0
 makeoptions=4
- -Xg -l -Mobjfpc -Sh -Fcutf8
- -gl
+ -l -Mobjfpc -Sh -Fcutf8
+ -gl -O-
  -B
- -OG2p3 -XX -CX -Xs
+ -O2 -XX -CX -Xs
 codetemplatedirs=1
  ${TEMPLATEDIR}
 toolmenus=0
@@ -68,39 +67,51 @@ newfisources=3
  ${TEMPLATEDIR}default/program.pas
  ${TEMPLATEDIR}default/unit.pas
  
-newfonames=8
+newfonames=11
  Mainform
  Simple Form
  Docking Form
  Datamodule
  Subform
+ Scrollboxform
+ Tabform
+ Dockpanel
  Report
  Scriptform
  Inherited Form
-newfonamebases=8
+newfonamebases=11
  form
  form
  form
  module
  form
+ form
+ form
+ form
  report
  script
  form
-newfosources=8
+newfosources=11
  ${TEMPLATEDIR}default/mainform.pas
  ${TEMPLATEDIR}default/simpleform.pas
  ${TEMPLATEDIR}default/dockingform.pas
  ${TEMPLATEDIR}default/datamodule.pas
  ${TEMPLATEDIR}default/subform.pas
+ ${TEMPLATEDIR}default/scrollboxform.pas
+ ${TEMPLATEDIR}default/tabform.pas
+ ${TEMPLATEDIR}default/dockpanelform.pas
  ${TEMPLATEDIR}default/report.pas
  ${TEMPLATEDIR}default/pascform.pas
  ${TEMPLATEDIR}default/inheritedform.pas
-newfoforms=8
+newfoforms=11
  ${TEMPLATEDIR}default/mainform.mfm
  ${TEMPLATEDIR}default/simpleform.mfm
  ${TEMPLATEDIR}default/dockingform.mfm
  ${TEMPLATEDIR}default/datamodule.mfm
  ${TEMPLATEDIR}default/subform.mfm
+ ${TEMPLATEDIR}default/scrollboxform.mfm
+ ${TEMPLATEDIR}default/tabform.mfm
+ ${TEMPLATEDIR}default/dockpanelform.mfm
  ${TEMPLATEDIR}default/report.mfm
  ${TEMPLATEDIR}default/pascform.mfm
  ${TEMPLATEDIR}default/inheritedform.mfm
@@ -112,68 +123,8 @@ checkmethods=1
 colorerror=-1610612712
 colorwarning=-1610612717
 colornote=-1610612716
-usercolors=30
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
-usercolorcomment=30
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
+usercolors=0
+usercolorcomment=0
 formatmacronames=0
 formatmacrovalues=0
 settingsfile=
@@ -193,21 +144,14 @@ makeoptionson=4
  34
  32
 aftcommandon=0
-unitdirson=3
+unitdirson=2
  65599
- 196671
  65599
 macroon=0
 macronames=0
 macrovalues=0
 macrogroup=0
-groupcomments=6
- 
- 
- 
- 
- 
- 
+groupcomments=0
 toolsave=0
 toolhide=0
 toolparse=0
@@ -221,7 +165,10 @@ fontoptions=0
 fontxscales=0
 expandprojectfilemacros=0
 loadprojectfile=0
-newinheritedforms=8
+newinheritedforms=11
+ 0
+ 0
+ 0
  0
  0
  0
@@ -361,9 +308,13 @@ address=0
 addbkpt=0
 ignore=0
 condition=0
-panels=2
+panels=6
  panel1
  panel2
+ panel3
+ panel4
+ panel5
+ panel6
 units=
  (
  a=0,4132,6,Pascal Units
@@ -396,25 +347,20 @@ hintheight=0
 finddtext=
 findhistory=0
 findoptions=1
-editpos=1
- 0,0
-bookmarks0=0
-sourcefiles=1
- /home/mse/packs/standard/git/mseide-msegui/tools/form2pas.pas
-relpaths=1
- form2pas.pas
-ismoduletexts=1
- 0
+editpos=0
+sourcefiles=0
+relpaths=0
+ismoduletexts=0
 modules=0
 moduleoptions=0
 visiblemodules=0
 nomenumodules=0
 [sourcefo.tabwidget]
-tabsize=134
+tabsize=127
 firsttab=0
-index=0
+index=-1
 [layout]
-windowlayout=532
+windowlayout=589
  [mainfo.openform]
  filenames=0
  filecolwidth=0
@@ -433,16 +379,14 @@ windowlayout=532
  cy=0
  [mainfo.openfile]
  filenames=0
- filecolwidth=174
+ filecolwidth=0
  x=0
  y=0
  cx=0
  cy=0
- filehistory=2
-  /home/mse/packs/standard/git/mseide-msegui/tools/form2pas.pas
-  /home/mse/packs/standard/git/mseide-msegui/tools/bmp2pas.pas
+ filehistory=0
  filefilterindex=0
- filefilter="*.pp" "*.pas" "*.inc" "*.dpr" "*.lpr"
+ filefilter=
  [mainfo.basedock]
  splitdir=2
  useroptions=146560
@@ -474,15 +418,15 @@ windowlayout=532
  ny=0
  ncx=0
  ncy=0
- x=697
- y=554
- cx=323
- cy=169
+ x=209
+ y=385
+ cx=368
+ cy=137
  rcx=0
  rcy=0
  wsize=0
  active=0
- visible=1
+ visible=0
  [threadsfo]
  splitdir=0
  useroptions=16489
@@ -504,7 +448,7 @@ windowlayout=532
  [memoryfo]
  splitdir=0
  useroptions=16507
- stackedunder=componentpalettefo
+ stackedunder=componentstorefo
  parent=
  mdistate=0
  nx=0
@@ -531,7 +475,7 @@ windowlayout=532
  [disassfo]
  splitdir=0
  useroptions=16491
- stackedunder=mainfo.panel2
+ stackedunder=targetconsolefo
  parent=
  mdistate=0
  nx=0
@@ -605,7 +549,7 @@ windowlayout=532
  x=0
  y=0
  cx=313
- cy=276
+ cy=295
  rcx=0
  rcy=0
  [watchpointsfo]
@@ -669,27 +613,24 @@ windowlayout=532
  [objectinspectorfo]
  splitdir=0
  useroptions=16491
- stackedunder=breakpointsfo
- parent=
+ parent=mainfo.panel5.container
+ visible=1
  mdistate=0
  nx=0
  ny=0
  ncx=0
  ncy=0
- x=724
- y=157
- cx=296
- cy=566
+ x=518
+ y=0
+ cx=233
+ cy=517
  rcx=0
  rcy=0
- wsize=0
- active=0
- visible=0
  [objectinspectorfo.grid]
- propcolwidthref=286
- width0=105
+ propcolwidthref=233
+ width0=86
  sortdescend0=0
- width1=175
+ width1=141
  sortdescend1=0
  [symbolfo]
  splitdir=0
@@ -729,9 +670,9 @@ windowlayout=532
  ncx=0
  ncy=0
  x=0
- y=279
+ y=298
  cx=313
- cy=221
+ cy=236
  rcx=0
  rcy=0
  [watchfo.grid]
@@ -798,26 +739,24 @@ windowlayout=532
  width3=185
  sortdescend3=0
  [componentstorefo.storefiledialog]
- filenames=1
-  /home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
+ filenames=0
  filecolwidth=0
  x=0
  y=0
  cx=0
  cy=0
- lastdir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
+ lastdir=
  filehistory=0
  filefilterindex=0
  filefilter=
  [componentstorefo.groupfiledialog]
- filenames=1
-  /home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
+ filenames=0
  filecolwidth=0
  x=0
  y=0
  cx=0
  cy=0
- lastdir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
+ lastdir=
  filehistory=0
  filefilterindex=0
  filefilter=
@@ -835,22 +774,19 @@ windowlayout=532
  [componentpalettefo]
  splitdir=0
  useroptions=24683
- stackedunder=componentstorefo
- parent=
+ parent=mainfo.panel4.container
+ visible=1
  mdistate=0
  nx=0
  ny=0
  ncx=0
  ncy=0
- x=335
- y=25
- cx=685
- cy=103
+ x=0
+ y=0
+ cx=761
+ cy=75
  rcx=0
  rcy=0
- wsize=0
- active=0
- visible=0
  [componentpalettefo.componentpages]
  activetab=0
  [debuggerfo]
@@ -893,26 +829,26 @@ windowlayout=532
  irqoff=0
  splitdir=0
  useroptions=16491
- stackedunder=mainfo.panel1
+ stackedunder=mainfo.panel2
  parent=
  mdistate=0
  nx=0
  ny=0
  ncx=0
  ncy=0
- x=335
- y=25
+ x=337
+ y=295
  cx=273
  cy=207
  rcx=0
  rcy=0
  wsize=0
  active=0
- visible=1
+ visible=0
  [mainfo.panel1]
  splitdir=2
  useroptions=33586667
- stackedunder=targetconsolefo
+ stackedunder=mainfo.panel3
  parent=
  mdistate=0
  nx=0
@@ -931,7 +867,7 @@ windowlayout=532
  [mainfo.panel2]
  splitdir=2
  useroptions=33586667
- stackedunder=cpui386fo
+ stackedunder=mainfo.panel1
  parent=
  mdistate=0
  nx=0
@@ -941,12 +877,79 @@ windowlayout=532
  x=697
  y=25
  cx=323
- cy=500
+ cy=534
  rcx=0
  rcy=0
  wsize=0
  active=0
  visible=1
+ [mainfo.panel3]
+ splitdir=1
+ useroptions=32235
+ stackedunder=mainfo
+ parent=
+ mdistate=0
+ nx=0
+ ny=0
+ ncx=0
+ ncy=0
+ x=249
+ y=118
+ cx=771
+ cy=605
+ rcx=0
+ rcy=0
+ wsize=0
+ active=0
+ visible=1
+ [mainfo.panel4]
+ splitdir=2
+ useroptions=32235
+ parent=mainfo.panel3.container
+ visible=1
+ mdistate=0
+ nx=0
+ ny=0
+ ncx=0
+ ncy=0
+ x=0
+ y=0
+ cx=761
+ cy=605
+ rcx=0
+ rcy=0
+ [mainfo.panel5]
+ splitdir=1
+ useroptions=32235
+ parent=mainfo.panel4.container
+ visible=1
+ mdistate=0
+ nx=0
+ ny=0
+ ncx=0
+ ncy=0
+ x=0
+ y=78
+ cx=761
+ cy=517
+ rcx=0
+ rcy=0
+ [mainfo.panel6]
+ splitdir=2
+ useroptions=32235
+ parent=mainfo.panel5.container
+ visible=1
+ mdistate=0
+ nx=0
+ ny=0
+ ncx=0
+ ncy=0
+ x=0
+ y=0
+ cx=515
+ cy=517
+ rcx=0
+ rcy=0
 [targetconsole]
 finddtext=
 findhistory=0

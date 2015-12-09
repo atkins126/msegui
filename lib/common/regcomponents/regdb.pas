@@ -83,6 +83,7 @@ type
  tsqlpropertyeditor = class(ttextstringspropertyeditor)
   private
    factivebefore: boolean;
+   fdbactivebefore: boolean;
    fintf: isqlpropertyeditor;
   protected
    function nocheck: boolean; virtual;
@@ -95,20 +96,9 @@ type
    procedure edit; override;
  end;
 
- tmsesqlpropertyeditor = class(ttextstringspropertyeditor)
-  private
-   factivebefore: boolean;
-   fintf: isqlpropertyeditor;
+ tmsesqlpropertyeditor = class(tsqlpropertyeditor)
   protected
    function ismsestring: boolean; override;
-   function nocheck: boolean; virtual;
-   function getsyntaxindex: integer; override;
-   procedure doafterclosequery(var amodalresult: modalresultty); override;
-   function gettestbutton: boolean; override;
-   function getutf8: boolean; override;
-   function getcaption: msestring; override;
-  public
-   procedure edit; override;
  end;
  
  tsqlnocheckpropertyeditor = class(tsqlpropertyeditor)
@@ -172,7 +162,17 @@ type
  tpropertyeditor1 = class(tpropertyeditor);
  tlbdropdowncol1 = class(tlbdropdowncol);
  tarrayelementeditor1 = class(tarrayelementeditor);
- 
+
+ tdatalinkpropertyeditor = class(tclasspropertyeditor)
+  public
+   function getvalue: msestring; override;
+ end;
+
+ tfielddatalinkpropertyeditor = class(tdatalinkpropertyeditor)
+  public
+   function getvalue: msestring; override;
+ end;
+  
  tnolistdropdowncolpropertyeditor = class(tarraypropertyeditor)
   protected
    function geteditorclass: propertyeditorclassty; override;
@@ -422,6 +422,9 @@ begin
       ]);
  registercomponenttabhints(['DBf'],['Datafield and data display components']);
 
+ registerpropertyeditor(typeinfo(tdatalink),nil,'',tdatalinkpropertyeditor);
+ registerpropertyeditor(typeinfo(tfielddatalink),nil,'',
+                                              tfielddatalinkpropertyeditor);
  registerpropertyeditor(typeinfo(datasetoptionsty),nil,'',
                                            tdatasetoptionspropertyeditor);
  registerpropertyeditor(typeinfo(variant),tmseparam,'value',
@@ -1026,6 +1029,9 @@ begin
  if amodalresult = mr_canclose then begin
   if fintf <> nil then begin
    fintf.setactive(true);
+   if not factivebefore then begin
+    fintf.setactive(false); //avoid exception by empty original statement
+   end;
   end;
  end;
 end;
@@ -1045,13 +1051,20 @@ begin
  if not nocheck and getcorbainterface(fprops[0].instance,
                             typeinfo(isqlpropertyeditor),fintf) then begin
   factivebefore:= fintf.getactive;
+  fdbactivebefore:= (fintf.getdatabase() = nil) or 
+                                   fintf.getdatabase.connected;
  end
  else begin
   fintf:= nil;
  end;
  inherited;
- if not factivebefore and (fintf <> nil) then begin
-  fintf.setactive(false);
+ if fintf <> nil then begin
+  if not factivebefore then begin
+   fintf.setactive(false);
+  end;
+  if not fdbactivebefore and (fintf.getdatabase <> nil) then begin
+   fintf.getdatabase.connected:= false;
+  end;
  end;
 end;
 
@@ -1066,63 +1079,6 @@ begin
 end;
 
 { tmsesqlpropertyeditor }
-
-function tmsesqlpropertyeditor.getsyntaxindex: integer;
-begin
- if sqlindex < 0 then begin
-  sqlindex:= msetexteditor.syntaxpainter.readdeffile(sqlsyntax);
- end;
- result:= sqlindex;
-end;
-
-procedure tmsesqlpropertyeditor.doafterclosequery(
-                 var amodalresult: modalresultty);
-var
- bo1: boolean;
-begin
- if amodalresult = mr_canclose then begin
-  if fintf <> nil then begin
-   bo1:= fintf.getactive;
-   fintf.setactive(true);
-   fintf.setactive(bo1);
-  end;
- end;
-end;
-
-function tmsesqlpropertyeditor.gettestbutton: boolean;
-begin
- result:= fintf <> nil;
-end;
-
-function tmsesqlpropertyeditor.getutf8: boolean;
-begin
- result:= (fintf <> nil) and fintf.isutf8;
-end;
-
-procedure tmsesqlpropertyeditor.edit;
-begin
- if not nocheck and getcorbainterface(fprops[0].instance,
-                            typeinfo(isqlpropertyeditor),fintf) then begin
-  factivebefore:= fintf.getactive;
- end
- else begin
-  fintf:= nil;
- end;
- inherited;
- if not factivebefore and (fintf <> nil) then begin
-  fintf.setactive(false);
- end;
-end;
-
-function tmsesqlpropertyeditor.getcaption: msestring;
-begin
- result:= 'SQL Editor';
-end;
-
-function tmsesqlpropertyeditor.nocheck: boolean;
-begin
- result:= false;
-end;
 
 function tmsesqlpropertyeditor.ismsestring: boolean;
 begin
@@ -1736,6 +1692,34 @@ begin
      {$else}
         mask1
      {$endif});
+end;
+
+{ tdatalinkpropertyeditor }
+
+function tdatalinkpropertyeditor.getvalue: msestring;
+var
+ inst: tdatalink;
+begin
+ inst:= tdatalink(getpointervalue());
+ if (inst <> nil) and (inst.datasource <> nil) then begin
+  result:= '<'+getcomponentpropname(inst.datasource)+'>';
+ end
+ else begin
+  result:= inherited getvalue;
+ end;
+end;
+
+{ tfielddatalinkpropertyeditor }
+
+function tfielddatalinkpropertyeditor.getvalue: msestring;
+var
+ inst: tfielddatalink;
+begin
+ inst:= tfielddatalink(getpointervalue());
+ result:= inherited getvalue();
+ if inst.fieldname <> '' then begin
+  result:= '<'+msestring(inst.fieldname)+'>'+result;
+ end;
 end;
 
 initialization

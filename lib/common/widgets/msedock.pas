@@ -36,17 +36,21 @@ type
             od_propsize,od_fixsize,od_top,od_background,
             od_alignbegin,od_aligncenter,od_alignend,
             od_nofit,od_banded,od_nosplitsize,od_nosplitmove,
-            od_lock,od_thumbtrack);
+            od_lock,od_nolock,od_thumbtrack,od_captionhint,
+            od_childicons); //for tformdockcontroller
  optionsdockty = set of optiondockty;
 
  dockbuttonrectty = (dbr_none,dbr_handle,dbr_close,dbr_maximize,dbr_normalize,
                      dbr_minimize,dbr_fixsize,dbr_float,
-                     dbr_top,dbr_background,dbr_lock);
+                     dbr_top,dbr_background,dbr_lock,dbr_nolock);
 const
- defaultoptionsdock = [od_savepos,od_savezorder,od_savechildren];
+ defaultoptionsdock = [od_savepos,od_savezorder,od_savechildren,od_captionhint,
+                       od_childicons];
  defaultoptionsdocknochildren = defaultoptionsdock - [od_savechildren];
  dbr_first = dbr_handle;
- dbr_last = dbr_lock;
+ dbr_last = dbr_nolock;
+ dbr_firstbutton = dockbuttonrectty(ord(dbr_first)+1);
+ dbr_lastbutton = dbr_last;
  defaulttaboptions= [tabo_dragdest,tabo_dragsource];
  
 type
@@ -78,7 +82,7 @@ type
    procedure refused(const apos: pointty); override;
  end;
 
- idockcontroller = interface(idragcontroller)
+ idockcontroller = interface(idragcontroller)[miid_idockcontroller]
   function checkdock(var info: draginfoty): boolean;
   function getbuttonrects(const index: dockbuttonrectty): rectty;  
                                       //origin = clientrect.pos
@@ -86,6 +90,8 @@ type
   function getminimizedsize(out apos: captionposty): sizety;  
                      //cx = 0 -> normalwidth, cy = 0 -> normalheight
   function getcaption: msestring;
+  function getchildicon: tmaskedbitmap; //own or first icon of dockchildren,
+                                        //can return nil
   procedure dolayoutchanged(const sender: tdockcontroller);
   procedure dodockcaptionchanged(const sender: tdockcontroller);
  end;
@@ -124,11 +130,13 @@ type
  dockstatety = (dos_layoutvalid,dos_sizing,
                 dos_updating1,dos_updating2,dos_updating3,
                  dos_updating4,dos_updating5,dos_tabedending,
+                 {
                     dos_closebuttonclicked,dos_maximizebuttonclicked,
                     dos_normalizebuttonclicked,dos_minimizebuttonclicked,
                     dos_fixsizebuttonclicked,dos_floatbuttonclicked,
                     dos_topbuttonclicked,dos_backgroundbuttonclicked,
-                    dos_lockbuttonclicked,
+                    dos_lockbuttonclicked,dos_nolockbuttonclicked,
+                 }
                     dos_moving,dos_hasfloatbutton,
                     {dos_proprefvalid,}dos_showed,dos_xorpic);
  dockstatesty = set of dockstatety;
@@ -257,6 +265,9 @@ type
    fr: prectaccessty;
    fw: pwidgetaccessty;
    fplacing: integer;
+   fclickedbutton: dockbuttonrectty;
+   fwidgetstate: widgetstatesty;
+   
    procedure checkdirection;
    procedure objectevent(const sender: tobject;
                                       const event: objecteventty); override;
@@ -271,6 +282,8 @@ type
    procedure dochildfloat(const awidget: twidget); virtual;
    function docheckdock(const info: draginfoty): boolean; virtual;
    function dockdrag(const dragobj: tdockdragobject): boolean;
+   procedure childstatechanged(const sender: twidget; 
+                         const newstate,oldstate: widgetstatesty); virtual;
 
    function getparentcontroller(
                      out acontroller: tdockcontroller): boolean; overload;
@@ -294,7 +307,7 @@ type
    function ismdi: boolean;
    function isfloating: boolean;
    function canmdisize: boolean;
-   procedure dolayoutchanged;
+   procedure dolayoutchanged; virtual; 
    procedure doboundschanged;
    procedure docaptionchanged;
    function findbandpos(const apos: integer; out aindex: integer;
@@ -331,7 +344,7 @@ type
             scalefixedalso: boolean = false; const awidgets: widgetarty = nil);
    procedure parentchanged(const sender: twidget);
    procedure poschanged;
-   procedure statechanged(const astate: widgetstatesty);
+   procedure statechanged(const astate: widgetstatesty); virtual;
    procedure widgetregionchanged(const sender: twidget);
    procedure updateminscrollsize(var asize: sizety);
    procedure beginclientrectchanged;
@@ -339,7 +352,7 @@ type
    procedure beginplacement();
    procedure endplacement();
    procedure layoutchanged; //force layout calcualation
-      //istatfile
+    //istatfile
    procedure dostatread(const reader: tstatreader);
    procedure dostatwrite(const writer: tstatwriter;
                                   const bounds: prectty = nil);
@@ -351,6 +364,7 @@ type
    function getwidget: twidget;
    function activewidget: twidget; //focused child or active tab
    function dockparentname(): string; //'' if none
+   function childicon(): tmaskedbitmap;
 
    property mdistate: mdistatety read fmdistate write setmdistate;
    property currentsplitdir: splitdirty read fsplitdir;
@@ -442,7 +456,7 @@ type
                  go_maximizebutton,
                  go_fixsizebutton,
                  go_floatbutton,go_topbutton,go_backgroundbutton,
-                 go_lockbutton,
+                 go_lockbutton,go_nolockbutton,go_buttonframe,
                  go_horz,go_vert,go_opposite,go_showsplitcaption,
                  go_showfloatcaption);
  gripoptionsty = set of gripoptionty;
@@ -450,9 +464,12 @@ type
 const
  defaultgripoptions = [go_closebutton];
  defaultdockpaneloptionswidget = defaultoptionswidget + [ow_subfocus];
-
+ defaulttextflagstop = [tf_ycentered,tf_clipo];
+ defaulttextflagsleft = [tf_ycentered,tf_rotate90,tf_clipo];
+ defaulttextflagsbottom = [tf_ycentered,tf_clipo];
+ defaulttextflagsright = [tf_ycentered,tf_rotate90,tf_clipo];
+ 
 type
-
  gripstatety = (grps_sizevalid);
  gripstatesty = set of gripstatety;
  
@@ -471,6 +488,12 @@ type
    fgrip_colorbuttonactive: colorty;
    fgrip_colorglyphactive: colorty;
    fgrip_face: tface;
+   fgrip_textflagstop: textflagsty;
+   fgrip_textflagsleft: textflagsty;
+   fgrip_textflagsbottom: textflagsty;
+   fgrip_textflagsright: textflagsty;
+   fgrip_captiondist: integer;
+   fgrip_captionoffset: integer;
    procedure setgrip_color(const avalue: colorty);
    procedure setgrip_grip(const avalue: stockbitmapty);
    procedure setgrip_size(const avalue: integer);
@@ -484,29 +507,42 @@ type
    function getgrip_face: tface;
    procedure setgrip_face(const avalue: tface);
    procedure createface;
+   procedure setgrip_textflagstop(const avalue: textflagsty);
+   procedure setgrip_textflagsright(const avalue: textflagsty);
+   procedure setgrip_textflagsbottom(const avalue: textflagsty);
+   procedure setgrip_textflagsrright(const avalue: textflagsty);
+   procedure setgrip_captiondist(const avalue: integer);
+   procedure setgrip_captionoffset(const avalue: integer);
   protected
    frects: array[dbr_first..dbr_last] of rectty;
+   fedges: array[dbr_first..dbr_last] of edgesty;
    fgriprect: rectty;
    fgripstate: gripstatesty;
    factgripsize: integer;
+   fmousebutton: dockbuttonrectty;
    procedure checkgripsize;
    procedure updatewidgetstate; override;   
    procedure updaterects; override;
    procedure updatestate; override;
    procedure getpaintframe(var frame: framety); override;
+   function ishintarea(const apos: pointty; var aid: int32): boolean; override;
    function calcsizingrect(const akind: sizingkindty;
                                 const offset: pointty): rectty;
+   procedure drawgripbutton(const acanvas: tcanvas;
+                    const akind: dockbuttonrectty; const arect: rectty; 
+                    const acolorglyph,acolorbutton: colorty;
+                    const ahiddenedges: edgesty); virtual;
+
     //iface
    function getclientrect: rectty;
    procedure invalidatewidget();
+   procedure invalidaterect(const rect: rectty; 
+              const org: originty = org_client; const noclip: boolean = false);
    function translatecolor(const acolor: colorty): colorty;
    procedure setlinkedvar(const source: tmsecomponent; var dest: tmsecomponent;
               const linkintf: iobjectlink = nil);
    function getcomponentstate: tcomponentstate;
    procedure widgetregioninvalid;
-   procedure drawgripbutton(const acanvas: tcanvas;
-                    const akind: dockbuttonrectty; const arect: rectty; 
-                             const acolorglyph,acolorbutton: colorty); virtual;
     //iobjectpicker
    function getwidget: twidget;
    function getcursorshape(const sender: tobjectpicker;
@@ -524,17 +560,31 @@ type
    constructor create(const intf: icaptionframe;
                                      const acontroller: tdockcontroller);
    destructor destroy; override;
+   procedure showhint(const aid: int32; var info: hintinfoty); override;
    procedure updatemousestate(const sender: twidget;
                                   const info: mouseeventinfoty); override;
    procedure mouseevent(var info: mouseeventinfoty);
    procedure paintoverlay(const canvas: tcanvas; const arect: rectty); override;
    property buttonrects[const index:  dockbuttonrectty]: rectty 
-                                                 read getbuttonrects;
+                                                    read getbuttonrects;
+                                                                //client origin
    function getminimizedsize(out apos: captionposty): sizety;
    function griprect: rectty; //origin = pos
-  published
+  published                    
    property grip_size: integer read fgrip_size write setgrip_size stored true;
-                               //for optionalclass
+                                                          //for optionalclass
+   property grip_textflagstop: textflagsty read fgrip_textflagstop 
+                     write setgrip_textflagstop default defaulttextflagstop;
+   property grip_textflagsleft: textflagsty read fgrip_textflagsleft
+                     write setgrip_textflagsright default defaulttextflagsleft;
+   property grip_textflagsbottom: textflagsty read fgrip_textflagsbottom
+                  write setgrip_textflagsbottom default defaulttextflagsbottom;
+   property grip_textflagsright: textflagsty read fgrip_textflagsright 
+                    write setgrip_textflagsrright default defaulttextflagsright;
+   property grip_captiondist: integer read fgrip_captiondist 
+                                      write setgrip_captiondist default 1;         
+   property grip_captionoffset: integer read fgrip_captionoffset 
+                                      write setgrip_captionoffset default 0;
    property grip_grip: stockbitmapty read fgrip_grip write setgrip_grip
                                                        default defaultgripgrip;
    property grip_color: colorty read fgrip_color write setgrip_color
@@ -586,12 +636,13 @@ type
    procedure parentchanged; override;
    function calcminscrollsize: sizety; override;
    procedure dopaintbackground(const canvas: tcanvas); override;
-   //idockcontroller
+    //idockcontroller
    function checkdock(var info: draginfoty): boolean;
    function getbuttonrects(const index: dockbuttonrectty): rectty;
    function getplacementrect: rectty;
    function getminimizedsize(out apos: captionposty): sizety;
    function getcaption: msestring;
+   function getchildicon: tmaskedbitmap;
    procedure dolayoutchanged(const sender: tdockcontroller); virtual;
    procedure dodockcaptionchanged(const sender: tdockcontroller); virtual;
     //istatfile
@@ -637,7 +688,8 @@ type
  tface1 = class(tface);
 
 const
- useroptionsmask: optionsdockty = [od_fixsize,od_top,od_background,od_lock];
+ useroptionsmask: optionsdockty = [od_fixsize,od_top,od_background,
+                                                          od_lock,od_nolock];
 
 type
  tchildorderevent = class(tobjectevent)
@@ -654,6 +706,7 @@ type
   protected
    procedure doclosepage(const sender: tobject); override;
    procedure dopageremoved(const apage: twidget);  override;
+   procedure tabchanged(const synctabindex: boolean); override;
    procedure updateoptions;
   public
    constructor create(const acontroller: tdockcontroller;
@@ -825,7 +878,16 @@ begin
   fcontroller.fsplitterrects:= nil;
   release;
  end;
- fcontroller.dolayoutchanged;
+ fcontroller.dolayoutchanged();
+end;
+
+procedure tdocktabwidget.tabchanged(const synctabindex: boolean);
+begin
+ inherited;
+ if fcontroller.fintf.getwidget.componentstate * 
+                               [csloading,csdestroying] = [] then begin
+  fcontroller.dolayoutchanged();
+ end;
 end;
 
 { tdocktabpage }
@@ -1738,11 +1800,9 @@ var
  widget1: twidget1;
 begin
  optbefore:= foptionsdock;
- optionsdock:= optionsdockty(replacebits(
-           {$ifdef FPC}longword{$else}longword{$endif}(avalue),
-           {$ifdef FPC}longword{$else}longword{$endif}(foptionsdock),
-           {$ifdef FPC}longword{$else}longword{$endif}(useroptionsmask)));
- if (od_lock in foptionsdock) xor (od_lock in optbefore) then begin
+ optionsdock:= optionsdockty(replacebits(longword(avalue),
+                         longword(foptionsdock),longword(useroptionsmask)));
+ if (foptionsdock >< optbefore) * [od_lock,od_nolock] <> [] then begin
   widget1:= twidget1(fintf.getwidget);
   if not widget1.isloading then begin
    widget1.parentchanged;
@@ -2139,6 +2199,16 @@ begin
  result:= dragobj.fdock.dodock(self);
 end;
 
+procedure tdockcontroller.childstatechanged(const sender: twidget;
+             const newstate: widgetstatesty; const oldstate: widgetstatesty);
+var
+ dock1: tdockcontroller;
+begin
+ if getparentcontroller(dock1) then begin
+  dock1.childstatechanged(sender,newstate,oldstate);
+ end;
+end;
+
 function tdockcontroller.beforedragevent(var info: draginfoty): boolean;
 
 var
@@ -2366,7 +2436,8 @@ begin
    mouseinhandle:= (fdockhandle <> nil) and pointinrect(
      translateclientpoint(info.pos,idockcontroller(fintf).getwidget,fdockhandle),
        fdockhandle.gethandlerect) or
-      pointinrect(info.pos,idockcontroller(fintf).getbuttonrects(dbr_handle));
+      pointinrect({widget1.clientpostowidgetpos(}info.pos{)},
+                            idockcontroller(fintf).getbuttonrects(dbr_handle));
    case eventkind of
     dek_begin: begin
      if mouseinhandle then begin
@@ -2389,6 +2460,9 @@ begin
         tdockdragobject.create(self,widget1,dragobjectpo^,fpickpos);
         result:= true;
        end;
+      end;
+      if result then begin
+       fclickedbutton:= dbr_none;
       end;
      end
     end;
@@ -2535,8 +2609,9 @@ function tdockcontroller.nogrip: boolean;
 var
  parent: tdockcontroller;
 begin
- result:= (od_lock in foptionsdock) or getparentcontroller(parent) and 
-                            parent.nogrip;
+ result:= (od_lock in foptionsdock) or 
+         not (od_nolock in foptionsdock) and getparentcontroller(parent) and 
+                                                                 parent.nogrip;
 end;
 
 procedure tdockcontroller.refused(const apos: pointty);
@@ -2710,7 +2785,7 @@ var
 begin
  decoderecord(avalue,[@na,@rect1.x,@rect1.y,@rect1.cx,@rect1.cy],'siiii');
  with fintf.getwidget do begin
-  w1:= findwidget(na);
+  w1:= findchild(na);
   fchildren[index]:= na;
   if w1 <> nil then begin
    rect2:= application.screenrect(window);
@@ -2767,9 +2842,8 @@ begin
   fsplitdir:= splitdirty(reader.readinteger('splitdir',ord(fsplitdir),
                               0,ord(high(splitdirty))));
  end;
- useroptions:= optionsdockty({$ifdef FPC}longword{$else}longword{$endif}(
-     reader.readinteger('useroptions',
-     integer({$ifdef FPC}longword{$else}longword{$endif}(fuseroptions)))));
+ useroptions:= optionsdockty(longword(
+     reader.readinteger('useroptions',integer(longword(fuseroptions)))));
 // setoptionsdock(foptionsdock); //check valid values
  ftaborder:= reader.readarray('order',msestringarty(nil));
  factivetab:= reader.readinteger('activetab',0);
@@ -3001,11 +3075,16 @@ var
  dbr1: dockbuttonrectty;
 begin
  result:= dbr_none;
- for dbr1:= dbr_first to dbr_last do begin
+ for dbr1:= dbr_firstbutton to dbr_lastbutton do begin
   if pointinrect(apos,idockcontroller(fintf).getbuttonrects(dbr1)) then begin
    result:= dbr1;
    break;
   end;
+ end;
+ if (result = dbr_none) and 
+            pointinrect(apos,
+                 idockcontroller(fintf).getbuttonrects(dbr_handle)) then begin
+  result:= dbr_handle; //handel rect can include buttons
  end;
 end;
 
@@ -3346,7 +3425,7 @@ var
   else begin
    exclude(fdockstate,dos_xorpic);
   end;
- end;
+ end; //drawxorpic
 
  procedure dosize;
  begin
@@ -3355,15 +3434,42 @@ var
    calcdelta;
    sizechanged(true);
   end;
- end;
+ end; //dosize
+
+ procedure setmousebutton(const abutton: dockbuttonrectty);
+ begin
+  if (widget1.fframe <> nil) and (widget1.fframe is tgripframe) then begin
+   with tgripframe(widget1.fframe) do begin
+    if abutton <> fmousebutton then begin
+     if fmousebutton <> dbr_none then begin
+      widget1.invalidaterect(frects[fmousebutton],org_widget);
+     end;
+     fmousebutton:= abutton;
+     if (fmousebutton >= dbr_first) and (fmousebutton <= dbr_last) then begin
+      widget1.invalidaterect(frects[fmousebutton],org_widget);
+     end;
+    end;
+    if (abutton <> fclickedbutton) and 
+      (abutton >= dbr_first) and (abutton <= dbr_last) then begin
+     widget1.invalidaterect(frects[abutton],org_widget);
+    end;     
+   end;   
+  end;
+  if (abutton <> fclickedbutton) then begin
+   fclickedbutton:= dbr_none;
+  end;
+ end; //setmousebutton
  
 const
  resetmousedockstate =
-        [dos_closebuttonclicked,dos_maximizebuttonclicked,
+        [{dos_closebuttonclicked,dos_maximizebuttonclicked,
           dos_normalizebuttonclicked,dos_minimizebuttonclicked,
           dos_fixsizebuttonclicked,dos_floatbuttonclicked,dos_topbuttonclicked,
-          dos_backgroundbuttonclicked,dos_lockbuttonclicked,dos_moving];
-             
+          dos_backgroundbuttonclicked,
+          dos_lockbuttonclicked,dos_nolockbuttonclicked,}dos_moving];
+var
+ bu1: dockbuttonrectty;
+
 begin
  inherited;
  with info do begin
@@ -3375,6 +3481,7 @@ begin
            widget1,widget1.container); //widget origin
    case info.eventkind of
     ek_mouseleave,ek_clientmouseleave: begin
+     setmousebutton(dbr_none);
      if not (ds_clicked in fstate) or 
                                   (info.eventkind = ek_mouseleave) then begin
       restorepickshape;
@@ -3384,14 +3491,19 @@ begin
       end;
       exclude(fstate,ds_clicked);
       fdockstate:= fdockstate - resetmousedockstate;
+      fclickedbutton:= dbr_none;
      end;
     end;
     ek_mousemove: begin
      if fsizeindex < 0 then begin
+      if not (csdesigning in widget1.componentstate) then begin
+       setmousebutton(checkbuttonarea(pos));
+      end;
       checksizing((dos_moving in fdockstate) or 
                          (od_nosplitsize in foptionsdock));
      end
      else begin
+      setmousebutton(dbr_none);
       if od_thumbtrack in optionsdock then begin
        if fsplitdir = sd_vert then begin
         fsizeoffset:= pos.x - fpickpos.x;
@@ -3439,6 +3551,10 @@ begin
        drawxorpic(true);
       end;
       if not (ss_shift in shiftstate) then begin
+       bu1:= checkbuttonarea(pos);
+       setmousebutton(bu1);
+       fclickedbutton:= bu1;
+      {
        case checkbuttonarea(pos) of
         dbr_close: include(fdockstate,dos_closebuttonclicked);
         dbr_maximize: include(fdockstate,dos_maximizebuttonclicked);
@@ -3449,7 +3565,9 @@ begin
         dbr_top: include(fdockstate,dos_topbuttonclicked);
         dbr_background: include(fdockstate,dos_backgroundbuttonclicked);
         dbr_lock: include(fdockstate,dos_lockbuttonclicked);
+        dbr_nolock: include(fdockstate,dos_nolockbuttonclicked);
        end;
+      }
       end;
      end;
     end;
@@ -3468,7 +3586,7 @@ begin
      else begin
       case checkbuttonarea(pos) of
        dbr_close: begin
-        if (dos_closebuttonclicked in fdockstate) then begin
+        if fclickedbutton = dbr_close then begin
          doclose(widget1);
         end;
        end;
@@ -3476,7 +3594,7 @@ begin
        dbr_normalize: mdistate:= mds_normal;
        dbr_minimize: mdistate:= mds_minimized;
        dbr_fixsize: begin
-        if (dos_fixsizebuttonclicked in fdockstate) then begin
+        if fclickedbutton = dbr_fixsize then begin
          useroptions:= optionsdockty(
           togglebit({$ifdef FPC}longword{$else}longword{$endif}(fuseroptions),
           ord(od_fixsize)));
@@ -3484,14 +3602,14 @@ begin
         end;
        end;
        dbr_float: begin
-        if (dos_floatbuttonclicked in fdockstate) then begin
+        if fclickedbutton = dbr_float then begin
          if not (csdesigning in widget1.componentstate) then begin
           dofloat(nullpoint);
          end;
         end;
        end;
        dbr_top: begin
-        if (dos_topbuttonclicked in fdockstate) then begin
+        if fclickedbutton = dbr_top then begin
          useroptions:= optionsdockty(
           togglebit({$ifdef FPC}longword{$else}longword{$endif}(fuseroptions),
           ord(od_top)));
@@ -3499,7 +3617,7 @@ begin
         end;
        end;
        dbr_background: begin
-        if (dos_backgroundbuttonclicked in fdockstate) then begin
+        if fclickedbutton = dbr_background then begin
          useroptions:= optionsdockty(
           togglebit({$ifdef FPC}longword{$else}longword{$endif}(fuseroptions),
           ord(od_background)));
@@ -3507,16 +3625,25 @@ begin
         end;
        end;
        dbr_lock: begin
-        if (dos_lockbuttonclicked in fdockstate) then begin
+        if fclickedbutton = dbr_lock then begin
          useroptions:= optionsdockty(
           togglebit({$ifdef FPC}longword{$else}longword{$endif}(fuseroptions),
           ord(od_lock)));
          widget1.invalidatewidget;
         end;
        end;
+       dbr_nolock: begin
+        if fclickedbutton = dbr_nolock then begin
+         useroptions:= optionsdockty(
+          togglebit({$ifdef FPC}longword{$else}longword{$endif}(fuseroptions),
+          ord(od_nolock)));
+         widget1.invalidatewidget;
+        end;
+       end;
       end;
      end;
      fdockstate:= fdockstate - resetmousedockstate;
+     fclickedbutton:= dbr_none;
     end;
    end;
   end;
@@ -3680,8 +3807,11 @@ begin
   end;
  end
  else begin
-  with twidget1(fintf.getwidget.container) do begin
-   result:= copy(fwidgets);
+  if fsplitdir = sd_horz then begin
+   result:= fintf.getwidget.getsortxchildren();
+  end
+  else begin
+   result:= fintf.getwidget.getsortychildren();
   end;
  end;
 end;
@@ -3805,8 +3935,13 @@ begin
 end;
 
 procedure tdockcontroller.statechanged(const astate: widgetstatesty);
+var
+ dock1: tdockcontroller;
 begin
- //not used
+ if getparentcontroller(dock1) then begin
+  dock1.childstatechanged(fintf.getwidget(),astate,fwidgetstate);
+ end;
+ fwidgetstate:= astate;
 end;
 
 procedure tdockcontroller.settab_options(const avalue: tabbaroptionsty);
@@ -3996,7 +4131,7 @@ begin
   end;
  end
  else begin
-  result:= fintf.getwidget.focusedchild;
+  result:= fintf.getwidget.enteredchild;
  end;
 end;
 
@@ -4007,6 +4142,36 @@ begin
  result:= '';
  if getparentcontroller(parent) then begin
   result:= parent.getwidget.name;
+ end;
+end;
+
+function tdockcontroller.childicon(): tmaskedbitmap;
+
+ function check(const awidget: twidget; var res: tmaskedbitmap): boolean;
+ var
+  intf1: idockcontroller;
+ begin
+  result:= false;
+  if getcorbainterface(awidget,typeinfo(idockcontroller),intf1) then begin
+   res:= intf1.getchildicon();
+   if (res <> nil) and res.hasimage() then begin
+    result:= true;
+   end;
+  end;
+ end; //check
+ 
+var
+ ar1: widgetarty;
+ i1: int32;
+begin
+ if not check(activewidget,result) then begin
+  ar1:= getitems;
+  result:= nil;
+  for i1:= 0 to high(ar1) do begin
+   if check(ar1[i1],result) then begin
+    break;
+   end;
+  end;
  end;
 end;
 
@@ -4057,7 +4222,7 @@ begin
    setlength(ar1,length(fchildren));
    widget1:= fintf.getwidget;
    for int1:= 0 to high(fchildren) do begin
-    ar1[int1]:= widget1.findwidget(fchildren[int1]);
+    ar1[int1]:= widget1.findchild(fchildren[int1]);
    end;
    if (ffocusedchild >= 0) and (ffocusedchild <= high(ar1)) and 
        (ar1[ffocusedchild] <> nil) and ar1[ffocusedchild].canfocus then begin
@@ -4094,6 +4259,11 @@ begin
  fgrip_pos:= defaultgrippos;
  fgrip_grip:= defaultgripgrip;
  fgrip_options:= defaultgripoptions;
+ fgrip_textflagstop:= defaulttextflagstop;
+ fgrip_textflagsleft:= defaulttextflagsleft;
+ fgrip_textflagsbottom:= defaulttextflagsbottom;
+ fgrip_textflagsright:= defaulttextflagsright;
+ fgrip_captiondist:= 1;
  fcontroller:= acontroller;
  inherited create(intf);
  fobjectpicker:= tobjectpicker.create(iobjectpicker(self));
@@ -4106,14 +4276,27 @@ begin
  inherited;
 end;
 
+procedure tgripframe.showhint(const aid: int32; var info: hintinfoty);
+begin
+ if -(aid - hintidframe) = ord(dbr_handle) then begin
+  info.caption:= fcontroller.getfloatcaption;
+ end;
+end;
+
 procedure tgripframe.drawgripbutton(const acanvas: tcanvas;
                const akind: dockbuttonrectty; const arect: rectty;
-               const acolorglyph: colorty; const acolorbutton: colorty);
-               
+               const acolorglyph: colorty; const acolorbutton: colorty;
+                                               const ahiddenedges: edgesty);
+
+var
+ hiddenedges1: edgesty;
+                
  function calclevel(const aoption: optiondockty): integer;
  begin
-  if aoption in fcontroller.foptionsdock then begin
+  if (ord(aoption) >= 0) and ((aoption in fcontroller.foptionsdock) or
+                      (fcontroller.fclickedbutton = akind)) then begin
    result:= -1;
+   hiddenedges1:= []
   end
   else begin
    result:= 1;
@@ -4123,13 +4306,21 @@ procedure tgripframe.drawgripbutton(const acanvas: tcanvas;
 var
  rect2: rectty;
  int1: integer;
+ i1: int32;
 begin
+ if akind = fmousebutton then begin
+  hiddenedges1:= [];
+ end
+ else begin
+  hiddenedges1:= ahiddenedges;
+ end;
  with acanvas,arect do begin
   fillrect(arect,acolorbutton);
+  i1:= calclevel(optiondockty(-1));
   case akind of
    dbr_close: begin
     if factgripsize >= 8 then begin
-     draw3dframe(acanvas,arect,1,defaultframecolors,[]);
+     draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
      drawcross(inflaterect(arect,-2),acolorglyph);
     end
     else begin
@@ -4137,12 +4328,12 @@ begin
     end;
    end;
    dbr_maximize: begin
-    draw3dframe(acanvas,arect,1,defaultframecolors,[]);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
     drawframe(inflaterect(arect,-2),-1,acolorglyph);
     drawvect(makepoint(x+2,y+3),gd_right,cx-5,acolorglyph);
    end;
    dbr_normalize: begin
-    draw3dframe(acanvas,arect,1,defaultframecolors,[]);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
     rect2.cx:= cx * 2 div 3 - 3;
     rect2.cy:= rect2.cx;
     rect2.pos:= addpoint(pos,makepoint(2,2));
@@ -4152,7 +4343,7 @@ begin
     drawrect(rect2,acolorglyph);
    end;
    dbr_minimize: begin
-    draw3dframe(acanvas,arect,1,defaultframecolors,[]);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
     acanvas.move(pos);
     case fgrip_pos of
      cp_left: begin
@@ -4175,12 +4366,12 @@ begin
     acanvas.remove(pos);
    end;
    dbr_fixsize: begin
-    draw3dframe(acanvas,arect,calclevel(od_fixsize),
-                 defaultframecolors,[]);
+    i1:= calclevel(od_fixsize);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
     drawframe(inflaterect(arect,-2),-1,acolorglyph);
    end;
    dbr_float: begin
-    draw3dframe(acanvas,arect,1,defaultframecolors,[]);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
     int1:= cx div 2;
     acanvas.move(pos);
     drawlines([mp(2,int1),mp(2,2),mp(int1,2)],false,acolorglyph);
@@ -4189,20 +4380,31 @@ begin
    end;
    dbr_top: begin
     int1:= x + cx div 2;
-    draw3dframe(acanvas,arect,calclevel(od_top),defaultframecolors,[]);
-    drawlines([makepoint(int1-3,y+4),makepoint(int1,y+1),makepoint(int1,y+cy-1)],
-             false,acolorglyph);
+    i1:= calclevel(od_top);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
+    drawlines([makepoint(int1-3,y+4),makepoint(int1,y+1),
+                     makepoint(int1,y+cy-1)],false,acolorglyph);
     drawline(makepoint(int1+3,y+4),makepoint(int1,y+1),acolorglyph);
    end;
    dbr_background: begin
     int1:= x + cx div 2;
-    draw3dframe(acanvas,arect,calclevel(od_background),defaultframecolors,[]);
-    drawlines([makepoint(int1-3,y+cx-4),makepoint(int1,y+cy-1),makepoint(int1,y+1)],
-             false,acolorglyph);
+    i1:= calclevel(od_background);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
+    drawlines([makepoint(int1-3,y+cx-4),makepoint(int1,y+cy-1),
+                                     makepoint(int1,y+1)],false,acolorglyph);
     drawline(makepoint(int1+3,y+cx-4),makepoint(int1,y+cy-1),acolorglyph);
    end;
    dbr_lock: begin
-    draw3dframe(acanvas,arect,calclevel(od_lock),defaultframecolors,[]);
+    i1:= calclevel(od_lock);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
+    drawellipse1(makerect(arect.x+2,arect.y+2,arect.cx-5,arect.cy-5),
+                                                               acolorglyph);
+   end;
+   dbr_nolock: begin
+    i1:= calclevel(od_nolock);
+    draw3dframe(acanvas,arect,i1,defaultframecolors,hiddenedges1);
+    fillellipse1(makerect(arect.x+2,arect.y+2,arect.cx-5,arect.cy-5),
+                                                               acolorglyph);
     drawellipse1(makerect(arect.x+2,arect.y+2,arect.cx-5,arect.cy-5),
                                                                acolorglyph);
    end;
@@ -4213,8 +4415,8 @@ end;
 procedure tgripframe.paintoverlay(const canvas: tcanvas; const arect: rectty);
 
 var
- brushbefore: tsimplebitmap;
- colorbefore: colorty;
+// brushbefore: tsimplebitmap;
+// colorbefore: colorty;
  po1,po2: pointty;
  int1,int2: integer;
  rect1: rectty;
@@ -4234,7 +4436,8 @@ begin
  with canvas do begin
   rect1:= clipbox;
   if testintersectrect(rect1,fgriprect) then begin
-   colorbefore:= color;
+//   colorbefore:= color;
+   canvas.save(); 
    if fintf.getwidget.active then begin
     colorbutton:= fgrip_colorbuttonactive;
     colorglyph:= fgrip_colorglyphactive;
@@ -4244,41 +4447,53 @@ begin
     colorglyph:= fgrip_colorglyph;
    end;
    if go_closebutton in fgrip_options then begin
-    drawgripbutton(canvas,dbr_close,frects[dbr_close],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_close,frects[dbr_close],colorglyph,colorbutton,
+                                    fedges[dbr_close]);
    end;
    if (frects[dbr_maximize].cx > 0) and 
            (go_maximizebutton in fgrip_options) then begin
-    drawgripbutton(canvas,dbr_maximize,frects[dbr_maximize],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_maximize,frects[dbr_maximize],colorglyph,
+                           colorbutton,fedges[dbr_maximize]);
    end;
    if (frects[dbr_normalize].cx > 0) and 
                            (go_normalizebutton in fgrip_options) then begin
-    drawgripbutton(canvas,dbr_normalize,frects[dbr_normalize],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_normalize,frects[dbr_normalize],colorglyph,
+                            colorbutton,fedges[dbr_normalize]);
    end;
    if (frects[dbr_minimize].cx > 0) and 
                            (go_minimizebutton in fgrip_options) then begin
-    drawgripbutton(canvas,dbr_minimize,frects[dbr_minimize],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_minimize,frects[dbr_minimize],colorglyph,
+                           colorbutton,fedges[dbr_minimize]);
    end;
    if (frects[dbr_fixsize].cx > 0) and 
                            (go_fixsizebutton in fgrip_options) then begin
-    drawgripbutton(canvas,dbr_fixsize,frects[dbr_fixsize],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_fixsize,frects[dbr_fixsize],colorglyph,
+                          colorbutton,fedges[dbr_fixsize]);
    end;
    if (frects[dbr_float].cx > 0) and 
                            (go_floatbutton in fgrip_options) then begin
-    drawgripbutton(canvas,dbr_float,frects[dbr_float],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_float,frects[dbr_float],colorglyph,colorbutton,
+                                    fedges[dbr_float]);
    end;
    if (frects[dbr_top].cx > 0) and 
                            (go_topbutton in fgrip_options)  then begin
-    drawgripbutton(canvas,dbr_top,frects[dbr_top],colorglyph,colorbutton);
+    drawgripbutton(canvas,dbr_top,frects[dbr_top],colorglyph,colorbutton,
+                                  fedges[dbr_top]);
    end;
    if (frects[dbr_background].cx > 0) and 
                            (go_backgroundbutton in fgrip_options) then begin
     drawgripbutton(canvas,dbr_background,frects[dbr_background],colorglyph,
-                                                                 colorbutton);
+                             colorbutton,fedges[dbr_background]);
    end;
    if (frects[dbr_lock].cx > 0) and 
                            (go_lockbutton in fgrip_options) then begin
-    drawgripbutton(canvas,dbr_lock,frects[dbr_lock],colorglyph,
-                                                                 colorbutton);
+    drawgripbutton(canvas,dbr_lock,frects[dbr_lock],colorglyph,colorbutton,
+                                   fedges[dbr_lock]);
+   end;
+   if (frects[dbr_nolock].cx > 0) and 
+                           (go_nolockbutton in fgrip_options) then begin
+    drawgripbutton(canvas,dbr_nolock,frects[dbr_nolock],colorglyph,
+                         colorbutton,fedges[dbr_nolock]);
    end;
    rect1:= frects[dbr_handle];
 //   if fgrip_pos in [cp_top,cp_bottom] then begin
@@ -4306,8 +4521,76 @@ begin
      with info1 do begin
       text.format:= nil;
       dest:= rect1;
+      clip:= rect1;
       font:= self.font;
       tabulators:= nil;
+      case fgrip_pos of
+       cp_top: begin
+        flags:= fgrip_textflagstop;
+        if not ((tf_right in flags) xor (tf_rotate180 in flags)) then begin
+         inc(dest.x,fgrip_captiondist);
+        end;
+        if not (tf_xcentered in flags) then begin
+         dec(dest.cx,fgrip_captiondist);
+        end;
+        inc(dest.y,fgrip_captionoffset);
+        if tf_clipi in flags then begin
+         clip.y:= -1000; //no vertical clip
+         clip.cy:= 2000;
+        end;
+       end;
+       cp_left: begin
+        flags:= fgrip_textflagsleft;
+        if (tf_right in flags) xor (tf_rotate180 in flags) then begin
+         inc(dest.y,fgrip_captiondist);
+        end
+        else begin
+         dec(dest.cy,fgrip_captiondist);
+         if tf_xcentered in flags then begin
+          dec(dest.y,fgrip_captiondist);
+         end;
+        end;
+        inc(dest.x,fgrip_captionoffset);
+        if tf_clipi in flags then begin
+         clip.x:= -1000; //no horicontal clip
+         clip.cx:= 2000;
+        end;
+       end;
+       cp_bottom: begin
+        flags:= fgrip_textflagsbottom;
+        if not ((tf_right in flags)  xor (tf_rotate180 in flags))then begin
+         inc(dest.x,fgrip_captiondist);
+        end;
+        if not (tf_xcentered in flags) then begin
+         dec(dest.cx,fgrip_captiondist);
+        end;
+        dec(dest.y,fgrip_captionoffset);
+        if tf_clipi in flags then begin
+         clip.y:= -1000; //no vertical clip
+         clip.cy:= 2000;
+        end;
+       end;
+       cp_right: begin
+        flags:= fgrip_textflagsright;
+        if (tf_right in flags) xor (tf_rotate180 in flags) then begin
+         inc(dest.y,fgrip_captiondist);
+        end
+        else begin
+         dec(dest.cy,fgrip_captiondist);
+         if tf_xcentered in flags then begin
+          dec(dest.y,fgrip_captiondist);
+         end;
+        end;
+        dec(dest.x,fgrip_captionoffset);
+        if tf_clipi in flags then begin
+         clip.x:= -1000; //no horicontal clip
+         clip.cx:= 2000;
+        end;
+       end;
+      end;
+      drawtext(canvas,info1);
+      canvas.subcliprect(inflaterect(info1.res,1));
+     {
       flags:= [tf_clipi,tf_ycentered];
       if fgrip_pos in [cp_top,cp_bottom] then begin
        inc(dest.x,1);
@@ -4338,6 +4621,7 @@ begin
         goto endlab;
        end;
       end;
+      }
      end;
     end;
 //   end;
@@ -4386,7 +4670,7 @@ begin
     end;
    end
    else begin
-    brushbefore:= brush;
+//    brushbefore:= brush;
     brush:= stockobjects.bitmaps[fgrip_grip];
     if fintf.getwidget.active then begin
      color:= fgrip_coloractive;
@@ -4395,21 +4679,31 @@ begin
      color:= fgrip_color;
     end;
     fillrect(rect1,cl_brushcanvas);
-    brush:= brushbefore;
+//    brush:= brushbefore;
  //  stockobjects.bitmaps[fgrip_grip].paint(canvas,fhandlerect,
  //         [al_xcentered,al_ycentered,al_tiled],fgrip_color,cl_transparent);
    end;
 endlab:
-   color:= colorbefore;
+   canvas.restore;//color:= colorbefore;
   end;
  end;
 end;
 
 function tgripframe.getbuttonrects(const index: dockbuttonrectty): rectty;
 begin
- result:= frects[index];
- dec(result.x,fpaintrect.x+fclientrect.x);
- dec(result.y,fpaintrect.y+fclientrect.y);
+ if (index >= dbr_first) and (index <= dbr_last) then begin
+  if index = dbr_handle then begin
+   result:= fgriprect;
+  end
+  else begin
+   result:= frects[index];
+  end;
+  dec(result.x,fpaintrect.x+fclientrect.x);
+  dec(result.y,fpaintrect.y+fclientrect.y);
+ end
+ else begin
+  result:= nullrect;
+ end;
 end;
 
 function tgripframe.getminimizedsize(out apos: captionposty): sizety;
@@ -4529,7 +4823,8 @@ var
 begin
  if not (grps_sizevalid in fgripstate) then begin
   factgripsize:= fgrip_size;
-  if fcontroller.getparentcontroller(parentcontroller) and 
+  if not (od_nolock in fcontroller.foptionsdock) and 
+              fcontroller.getparentcontroller(parentcontroller) and 
                                          parentcontroller.nogrip then begin
    factgripsize:= 0;
   end;
@@ -4538,9 +4833,16 @@ begin
 end;
 
 procedure tgripframe.updaterects;
- 
+
+var
+ firstbu,lastbu: dockbuttonrectty;
+  
  procedure initrect(const index: dockbuttonrectty);
  begin
+  if firstbu = dbr_none then begin
+   firstbu:= index;
+  end;
+  lastbu:= index;
   with frects[dbr_handle] do begin
    case fgrip_pos of
     cp_right,cp_left: begin
@@ -4548,13 +4850,18 @@ procedure tgripframe.updaterects;
      frects[index].y:= y;
      inc(y,factgripsize);
      dec(cy,factgripsize);
+     fedges[index]:= [edg_top,edg_bottom];
     end;
     else begin //top,bottom
      dec(cx,factgripsize);
      frects[index].x:= x + cx;
      frects[index].y:= y;
+     fedges[index]:= [edg_left,edg_right];
     end;
    end;
+  end;
+  if go_buttonframe in fgrip_options then begin
+   fedges[index]:= [];
   end;
   with frects[index] do begin
    cx:= factgripsize;
@@ -4566,8 +4873,9 @@ var
  bo1,bo2,bo3,designing: boolean;
  parentcontroller: tdockcontroller;
   
-begin
+begin         //widget origin
  inherited;
+ firstbu:= dbr_none;
  checkgripsize;
  with fgriprect do begin
   case fgrip_pos of
@@ -4622,7 +4930,7 @@ begin
     initrect(dbr_minimize);
    end;
   end;
-  if bo1 or designing then begin
+  if bo1{ or designing} then begin
    if (go_fixsizebutton in fgrip_options) then begin
     if designing or 
          bo3 and fcontroller.getparentcontroller(parentcontroller) and
@@ -4645,6 +4953,20 @@ begin
   end;
   if go_lockbutton in fgrip_options then begin
    initrect(dbr_lock);
+  end;
+  if bo1 and (go_nolockbutton in fgrip_options) and 
+          ((fcontroller.getparentcontroller <> nil) or designing) then begin
+   initrect(dbr_nolock);
+  end;
+ end;
+ if firstbu <> dbr_none then begin
+  if fgrip_pos in [cp_right,cp_left] then begin
+   exclude(fedges[firstbu],edg_top);
+   exclude(fedges[lastbu],edg_bottom);
+  end
+  else begin
+   exclude(fedges[firstbu],edg_right);
+   exclude(fedges[lastbu],edg_left);
   end;
  end;
 end;
@@ -4690,6 +5012,12 @@ end;
 procedure tgripframe.invalidatewidget();
 begin
  fcontroller.fintf.getwidget.invalidatewidget();
+end;
+
+procedure tgripframe.invalidaterect(const rect: rectty;
+               const org: originty = org_client; const noclip: boolean = false);
+begin
+ fcontroller.fintf.getwidget.invalidaterect(rect,org,noclip);
 end;
 
 procedure tgripframe.setlinkedvar(const source: tmsecomponent;
@@ -4897,6 +5225,66 @@ begin
  //dummy
 end;
 
+function tgripframe.ishintarea(const apos: pointty; var aid: int32): boolean;
+begin
+ result:= pointinrect(apos,fgriprect{frects[dbr_handle]}) and 
+                          (od_captionhint in fcontroller.optionsdock);
+ if result then begin
+  aid:= hintidframe - ord(dbr_handle);
+ end
+ else begin
+  result:= inherited ishintarea(apos,aid);
+ end;
+end;
+
+procedure tgripframe.setgrip_textflagstop(const avalue: textflagsty);
+begin
+ if fgrip_textflagstop <> avalue then begin
+  fgrip_textflagstop:= checktextflags(fgrip_textflagstop,avalue);
+  fintf.invalidatewidget();
+ end;
+end;
+
+procedure tgripframe.setgrip_textflagsright(const avalue: textflagsty);
+begin
+ if fgrip_textflagsleft <> avalue then begin
+  fgrip_textflagsleft:= checktextflags(fgrip_textflagsleft,avalue);
+  fintf.invalidatewidget();
+ end;
+end;
+
+procedure tgripframe.setgrip_textflagsbottom(const avalue: textflagsty);
+begin
+ if fgrip_textflagsbottom <> avalue then begin
+  fgrip_textflagsbottom:= checktextflags(fgrip_textflagsbottom,avalue);
+  fintf.invalidatewidget();
+ end;
+end;
+
+procedure tgripframe.setgrip_textflagsrright(const avalue: textflagsty);
+begin
+ if fgrip_textflagsright <> avalue then begin
+  fgrip_textflagsright:= checktextflags(fgrip_textflagsright,avalue);
+  fintf.invalidatewidget();
+ end;
+end;
+
+procedure tgripframe.setgrip_captiondist(const avalue: integer);
+begin
+ if fgrip_captiondist <> avalue then begin
+  fgrip_captiondist:= avalue;
+  fintf.invalidatewidget();
+ end;
+end;
+
+procedure tgripframe.setgrip_captionoffset(const avalue: integer);
+begin
+ if fgrip_captionoffset <> avalue then begin
+  fgrip_captionoffset:= avalue;
+  fintf.invalidatewidget();
+ end;
+end;
+
 { tdockhandle }
 
 constructor tdockhandle.create(aowner: tcomponent);
@@ -5096,6 +5484,11 @@ end;
 function tdockpanel.getcaption: msestring;
 begin
  result:= '';
+end;
+
+function tdockpanel.getchildicon: tmaskedbitmap;
+begin
+ result:= nil;
 end;
 
 procedure tdockpanel.setstatfile(const Value: tstatfile);

@@ -36,10 +36,14 @@ procedure allocuninitedarray(count,itemsize: integer; out dynamicarray);
                  //does not init memory, dynamicarray must be nil!
 procedure reallocuninitedarray(count,itemsize: integer; var dynamicarray);
                  //does not init memory, dynamicarray must be unique!
+procedure freeuninitedarray(var dynamicarray);
+                 //does not finalize items, dynamicarray must be unique!
 function arrayrefcount(var dynamicarray): sizeint;
 function arrayminhigh(arrays: array of pointer): integer;
                        //array of dynamicarray
 function dynarrayelesize(const typinfo: pdynarraytypeinfo): sizeint; inline;
+function dynarrayhigh(const value: pointer): sizeint; inline;
+function dynarraylength(const value: pointer): sizeint; inline;
 function incrementarraylength(var value: pointer; typeinfo: pdynarraytypeinfo;
                              increment: integer = 1): sizeint; overload;
   //returns new length
@@ -305,6 +309,8 @@ procedure orderarray(const sourceorderlist: integerarty;
 procedure orderarray(const sourceorderlist: integerarty;
                              var sortlist: msestringarty); overload;
 procedure orderarray(const sourceorderlist: integerarty;
+                             var sortlist: msestringararty); overload;
+procedure orderarray(const sourceorderlist: integerarty;
                              var sortlist: stringarty); overload;
                              
 procedure reorderarray(const destorderlist: integerarty; 
@@ -401,6 +407,26 @@ begin
  inc(pchar(ti),length(ti^.name));
  result:= ti^.elsize;
 {$endif}
+end;
+
+function dynarrayhigh(const value: pointer): sizeint; inline;
+begin
+ if value = nil then begin
+  result:= -1;
+ end
+ else begin
+  result:= (psizeint(value)-1)^;
+ end;
+end;
+
+function dynarraylength(const value: pointer): sizeint; inline;
+begin
+ if value = nil then begin
+  result:= 0;
+ end
+ else begin
+  result:= (psizeint(value)-1)^+1;
+ end;
 end;
 
 function decrementarraylength(var value: pointer; const typeinfo: pdynarraytypeinfo;
@@ -574,6 +600,22 @@ begin
   psizeint(pchar(po1)+sizeof(sizeint))^:= count;     //count
   {$endif}
   pointer(dynamicarray):= pointer(pchar(po1) + 2 * sizeof(sizeint));
+ end;
+end;
+
+procedure freeuninitedarray(var dynamicarray);
+                 //does not finalize items, dynamicarray must be unique!
+var
+ po1: psizeint;
+begin
+ po1:= pointer(dynamicarray);
+ if po1 <> nil then begin
+  po1:= pointer(pchar(po1) - 2 * sizeof(sizeint));
+  if po1^ <> 1 then begin
+   raise exception.Create('reallocunitedarray: dynamicarray not unique');
+  end;
+  freemem(po1);
+  pointer(dynamicarray):= nil;
  end;
 end;
 
@@ -1651,8 +1693,8 @@ var
 label
  endstep;
 begin
+ aindexlist:= nil;
  if alength = 0 then begin
-  aindexlist:= nil;
   exit;
  end;
  po1:= pointer(asortlist);
@@ -1865,8 +1907,8 @@ var
 label
  endstep;
 begin
+ aindexlist:= nil;
  if acount = 0 then begin
-  aindexlist:= nil;
   exit;
  end;
  po1:= pointer(adata);
@@ -1988,8 +2030,8 @@ var
 label
  endstep;
 begin
+ aoffsetlist:= nil;
  if acount = 0 then begin
-  aoffsetlist:= nil;
   exit;
  end;
  po1:= pointer(adata);
@@ -2111,8 +2153,8 @@ var
 label
  endstep;
 begin
+ apointerlist:= nil;
  if acount = 0 then begin
-  apointerlist:= nil;
   exit;
  end;
 // po1:= pointer(adata);
@@ -2283,8 +2325,8 @@ var
 label
  endstep;
 begin
+ aindexlist:= nil;
  if acount = 0 then begin
-  aindexlist:= nil;
   exit;
  end;
  allocuninitedarray(acount,sizeof(integer),ar1);
@@ -2659,6 +2701,19 @@ end;
 procedure orderarray(const sourceorderlist: integerarty; var sortlist: msestringarty);
 var
  ar1: msestringarty;
+ int1: integer;
+begin
+ setlength(ar1,length(sourceorderlist));
+ for int1:= 0 to high(sourceorderlist) do begin
+  ar1[int1]:= sortlist[sourceorderlist[int1]];
+ end;
+ sortlist:= ar1;
+end;
+
+procedure orderarray(const sourceorderlist: integerarty;
+                             var sortlist: msestringararty); overload;
+var
+ ar1: msestringararty;
  int1: integer;
 begin
  setlength(ar1,length(sourceorderlist));

@@ -273,7 +273,6 @@ type
                                                         write setcontroller;
    property dialogkind: filedialogkindty read fdialogkind write fdialogkind
                                                            default fdk_none;
-//   property optionsedit: optionseditty read foptionsedit write setoptionsedit;
    property optionsedit1: optionsedit1ty read foptionsedit1 write foptionsedit1
                                   default defaultfiledialogoptionsedit1;
  end;
@@ -289,7 +288,6 @@ type
  tcustomfilenameedit1 = class(tcustomdialogstringed)
   private
    fcontroller: tfiledialogcontroller;
-//   fdialogkind: filedialogkindty;
    procedure setcontroller(const avalue: tfiledialogcontroller);
    function getsysvalue: filenamety;
    procedure setsysvalue(const avalue: filenamety);
@@ -297,7 +295,6 @@ type
   protected
    function createdialogcontroller: tstringdialogcontroller; override;
    procedure texttovalue(var accept: boolean; const quiet: boolean); override;
-//   function execute(var avalue: msestring): boolean; override;
    procedure updatedisptext(var avalue: msestring); override;
    function getvaluetext: msestring; override;
    procedure readstatvalue(const reader: tstatreader); override;
@@ -313,11 +310,12 @@ type
    constructor create(aowner: tcomponent); override;
    destructor destroy; override;
    procedure componentevent(const event: tcomponentevent); override;
-   property controller: tfiledialogcontroller read fcontroller write setcontroller;
+   property controller: tfiledialogcontroller read fcontroller 
+                                                         write setcontroller;
    property sysvalue: filenamety read getsysvalue write setsysvalue;
    property sysvaluequoted: filenamety read getsysvaluequoted write setsysvalue;
   published
-//   property dialogkind: filedialogkindty read fdialogkind write fdialogkind default fdk_open;
+   property optionsedit1 default defaultfiledialogoptionsedit1;
  end;
 
  tcustomfilenameedit = class(tcustomfilenameedit1)
@@ -426,7 +424,7 @@ type
                   var accept: Boolean);
    procedure formoncreate(const sender: TObject);
    procedure dirshowhint(const sender: TObject; var info: hintinfoty);
-   procedure copytolip(const sender: TObject; var avalue: msestring);
+   procedure copytoclip(const sender: TObject; var avalue: msestring);
    procedure pastefromclip(const sender: TObject; var avalue: msestring);
    procedure homeaction(const sender: TObject);
    procedure backexe(const sender: TObject);
@@ -1503,7 +1501,7 @@ begin
  end;
 end;
 
-procedure tfiledialogfo.copytolip(const sender: TObject; var avalue: msestring);
+procedure tfiledialogfo.copytoclip(const sender: TObject; var avalue: msestring);
 begin
  tosysfilepath1(avalue);
 end;
@@ -1610,12 +1608,6 @@ end;
 
 procedure tfiledialogcontroller.readstatstate(const reader: tstatreader);
 begin
- if fdo_savelastdir in foptions then begin
-  flastdir:= reader.readmsestring('lastdir',flastdir);
- end;
- if fhistorymaxcount > 0 then begin
-  fhistory:= reader.readarray('filehistory',fhistory);
- end;
  ffilterindex:= reader.readinteger('filefilterindex',ffilterindex);
  ffilter:= reader.readmsestring('filefilter',ffilter);
  fwindowrect.x:= reader.readinteger('x',fwindowrect.x);
@@ -1633,6 +1625,12 @@ end;
 
 procedure tfiledialogcontroller.readstatoptions(const reader: tstatreader);
 begin
+ if fdo_savelastdir in foptions then begin
+  flastdir:= reader.readmsestring('lastdir',flastdir);
+ end;
+ if fhistorymaxcount > 0 then begin
+  fhistory:= reader.readarray('filehistory',fhistory);
+ end;
 end;
 
 procedure tfiledialogcontroller.writestatvalue(const writer: tstatwriter);
@@ -1645,14 +1643,6 @@ end;
 
 procedure tfiledialogcontroller.writestatstate(const writer: tstatwriter);
 begin
- if fdo_savelastdir in foptions then begin
-  writer.writemsestring('lastdir',flastdir);
- end;
- if fhistorymaxcount > 0 then begin
-  writer.writearray('filehistory',fhistory);
- end;
- writer.writeinteger('filefilterindex',ffilterindex);
- writer.writemsestring('filefilter',ffilter);
  writer.writeinteger('filecolwidth',fcolwidth);
  writer.writeinteger('x',fwindowrect.x);
  writer.writeinteger('y',fwindowrect.y);
@@ -1662,7 +1652,14 @@ end;
 
 procedure tfiledialogcontroller.writestatoptions(const writer: tstatwriter);
 begin
- //dummy
+ if fdo_savelastdir in foptions then begin
+  writer.writemsestring('lastdir',flastdir);
+ end;
+ if fhistorymaxcount > 0 then begin
+  writer.writearray('filehistory',fhistory);
+ end;
+ writer.writeinteger('filefilterindex',ffilterindex);
+ writer.writemsestring('filefilter',ffilter);
 end;
 
 procedure tfiledialogcontroller.componentevent(const event: tcomponentevent);
@@ -2156,6 +2153,7 @@ constructor tcustomfilenameedit1.create(aowner: tcomponent);
 begin
 // fcontroller:= tfiledialogcontroller.create(self,{$ifdef FPC}@{$endif}formatchanged);
  inherited;
+ optionsedit1:= defaultfiledialogoptionsedit1;
 end;
 
 destructor tcustomfilenameedit1.destroy;

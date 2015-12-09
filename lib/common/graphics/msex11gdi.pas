@@ -1,4 +1,4 @@
-{ MSEgui Copyright (c) 1999-2014 by Martin Schreiber
+{ MSEgui Copyright (c) 1999-2015 by Martin Schreiber
 
     See the file COPYING.MSE, included in this distribution,
     for details about the copyright.
@@ -108,22 +108,32 @@ type
 var //xft functions
  XftDrawDestroy: procedure(draw:PXftDraw); cdecl;
  XftDrawSetClipRectangles: function (draw:PXftDraw; xOrigin:longint;
-         yOrigin:longint; rects:PXRectangle; n:longint):TFcBool;cdecl;
+         yOrigin:longint; rects:PXRectangle; n:longint):TFcBool; cdecl;
  XftDrawCreate: function(dpy:PDisplay; drawable:TDrawable; visual:PVisual;
-       colormap:TColormap): PXftDraw;cdecl;
- XftDrawSetClip: function(draw:PXftDraw; r:TRegion):TFcBool;cdecl;
+       colormap:TColormap): PXftDraw; cdecl;
+ XftDrawSetClip: function(draw:PXftDraw; r:TRegion):TFcBool; cdecl;
  XftTextExtents16: procedure(dpy:PDisplay; pub:PXftFont;
-  _string: pwidechar{PFcChar16}; len:longint; extents:PXGlyphInfo);cdecl;
- XftFontOpenName: function(dpy:PDisplay; screen:longint; name:Pchar):PXftFont;cdecl;
- XftFontClose: procedure(dpy:PDisplay; pub:PXftFont);cdecl;
+  _string: pwidechar{PFcChar16}; len:longint; extents:PXGlyphInfo); cdecl;
+ XftTextExtentsUtf16: procedure (dpy: pDisplay; pub: pXftFont;
+                                 _string: pFcChar8; endian: tFcEndian;
+                                       len: cint; extents: pXGlyphInfo); cdecl;
+ XftTextExtents32: procedure(dpy: pDisplay; pub: pXftFont; _string: pFcChar32;
+                                       len: cint; extents: pXGlyphInfo); cdecl;
+ XftFontOpenName: function(dpy:PDisplay; screen:longint;name:Pchar):PXftFont;
+                                                                          cdecl;
+ XftFontClose: procedure(dpy:PDisplay; pub:PXftFont); cdecl;
  XftDrawString16: procedure(draw:PXftDraw; color:PXftColor; pub:PXftFont; 
-           x:longint; y:longint; _string:pwidechar; len:longint);cdecl;
- XftDefaultHasRender: function(dpy:PDisplay):TFcBool;cdecl;
- XftGetVersion: function():longint;cdecl;
- XftInit: function(config:Pchar):TFcBool;cdecl;
- XftInitFtLibrary: function ():TFcBool;cdecl;
+           x:longint; y:longint; _string:pwidechar; len:longint); cdecl;
+ XftDrawStringUtf16: procedure(draw: pXftDraw; color: pXftColor; pub: pXftFont;
+            x: cint; y: cint; _string: pFcChar8; endian: tFcEndian; len: cint);
+                                                                         cdecl;
+ XftDefaultHasRender: function(dpy:PDisplay):TFcBool; cdecl;
+ XftGetVersion: function():longint; cdecl;
+ XftInit: function(config:Pchar):TFcBool; cdecl;
+ XftInitFtLibrary: function ():TFcBool; cdecl;
 
- XftCharExists: function(dpy:PDisplay; pub:PXftFont; ucs4:TFcChar32):TFcBool;cdecl;
+ XftCharExists: function(dpy:PDisplay; pub:PXftFont; ucs4:TFcChar32):TFcBool;
+                                                                         cdecl;
  XftNameParse: function(name:Pchar): PFcPattern;cdecl;
  XftFontMatch: function(dpy:PDisplay; screen:longint; pattern:PFcPattern;
                                   result:PFcResult): PFcPattern;cdecl;
@@ -956,7 +966,16 @@ begin
  result:= createcolorpi(alphatorendercolor(acolor),alpharenderpictformat);
 end;
 }
-function createmaskpicture(const acolor: rgbtriplety): tpicture; overload;
+type
+ ppxrenderpictformat = ^pxrenderpictformat;
+
+const
+ renderformats: array[bitmapkindty] of ppxrenderpictformat =
+// bmk_mono,              bmk_gray,             bmk_rgb
+  (@bitmaprenderpictformat,@alpharenderpictformat,@screenrenderpictformat);
+
+function createmaskpicture(const acolor: rgbtriplety;
+                                  const akind: bitmapkindty): tpicture;
 var
  attributes: txrenderpictureattributes;
  col: txrendercolor;
@@ -965,44 +984,39 @@ begin
 {$ifdef mse_debuggdisync}
  checkgdilock;
 {$endif} 
- pixmap:= gui_createpixmap(makesize(1,1));
+ pixmap:= gui_createpixmap(makesize(1,1),0,akind);
  attributes._repeat:= repeatnormal;
- attributes.component_alpha:= 1;
- result:= xrendercreatepicture(appdisp,pixmap,screenrenderpictformat,
-                                    cprepeat or cpcomponentalpha,@attributes);
  col:= colortorendercolor(acolor);
+ attributes.component_alpha:= 1;
+ if akind = bmk_gray then begin
+  col.alpha:= (col.red + col.green + col.blue) div 3;
+ end;
+ result:= xrendercreatepicture(appdisp,pixmap,renderformats[akind]^,
+                                    cprepeat or cpcomponentalpha,@attributes);
  xrenderfillrectangle(appdisp,pictopsrc,result,@col,0,0,1,1);
  gui_freepixmap(pixmap);
 end;
 
-function createmaskpicture(const amask: tsimplebitmap): tpicture; overload;
+function createmaskpicture(const ahandle: pixmapty;
+                           const akind: bitmapkindty): tpicture;
 var
  attributes: txrenderpictureattributes;
- handle1: pixmapty;
- format1: pxrenderpictformat;
 begin
 {$ifdef mse_debuggdisync}
  checkgdilock;
 {$endif} 
  result:= 0;
+ if ahandle <> 0 then begin
+  attributes.component_alpha:= 1;
+  result:= xrendercreatepicture(appdisp,ahandle,
+                           renderformats[akind]^,cpcomponentalpha,@attributes);
+ end;
+end;
+
+function createmaskpicture(const amask: tsimplebitmap): tpicture; overload;
+begin
  if amask <> nil then begin
-  handle1:= tsimplebitmap1(amask).handle;
-  if handle1 <> 0 then begin
-   case amask.kind of
-    bmk_mono: begin
-     format1:= bitmaprenderpictformat;
-    end;
-    bmk_gray: begin
-     format1:= alpharenderpictformat;
-    end;
-    else begin
-     format1:= screenrenderpictformat;
-    end;
-   end;
-   attributes.component_alpha:= 1;
-   result:= xrendercreatepicture(appdisp,tsimplebitmap1(amask).handle,
-                                          format1,cpcomponentalpha,@attributes);
-  end;
+  result:= createmaskpicture(tsimplebitmap1(amask).handle,amask.kind);
  end;
 end;
 
@@ -1374,12 +1388,13 @@ procedure gdi_getchar16widths(var drawinfo: drawinfoty);
 var
  int1,int2: integer;
  char: word;
- po1: pmsechar;
+ po1,pe: pmsechar;
  po2: pinteger;
  charstructpo: pxcharstruct;
  glyphinfo: txglyphinfo;
  bo1: boolean;
  po3: pxftfont;
+ ca1: card32;
 
 begin
  gdi_lock;
@@ -1396,13 +1411,33 @@ begin
     end
     else begin
      po3:= pxftfont(font);
-    end; 
-    for int1:= 0 to count - 1 do begin //todo: optimize
-     xfttextextents16(appdisp,po3,po1,1,@glyphinfo);
-     po2^:= glyphinfo.xoff;
+    end;
+    pe:= po1 + count;
+    while po1 < pe do begin
+     ca1:= card16(po1^);
+     if (ca1 and $fc00 = $d800) then begin //surrogate pair
+      inc(po1);
+      if (card16(po1^) and $fc00 = $dc00) then begin
+       ca1:= ((ca1 + ($0040-$d800)) shl 10) + card16(po1^) - $dc00;
+       xfttextextents32(appdisp,po3,@ca1,1,@glyphinfo);
+       po2^:= glyphinfo.xoff;
+       inc(po2);
+       po2^:= 0;
+      end
+      else begin
+       dec(po1); //invalid low part
+       xfttextextents32(appdisp,po3,@ca1,1,@glyphinfo);
+       po2^:= glyphinfo.xoff;
+      end;
+     end
+     else begin
+      xfttextextents32(appdisp,po3,@ca1,1,@glyphinfo);
+      po2^:= glyphinfo.xoff;
+     end;
      inc(po1);
      inc(po2);
     end;
+    
     if bo1 then begin
      po2:= resultpo;
      int2:= highresfontfakt div 2; //round up
@@ -1473,7 +1508,7 @@ begin
 {$ifdef FPC} {$checkpointer off} {$endif}
   with fontdata^,x11fontdataty(platformdata),d.infopo^ do begin
    if fhasxft then begin
-    xfttextextents16(appdisp,pxftfont(font),@char,1,@glyphinfo);
+    xfttextextents32(appdisp,pxftfont(font),@char,1,@glyphinfo);
     with resultpo^ do begin
      width:= glyphinfo.xoff;
      leftbearing:= glyphinfo.x;
@@ -1493,7 +1528,8 @@ begin
       end;
      end;
      fmm_matrix: begin
-      po1:= getmatrixcharstruct(char,x11fontdataty(fontdata^.platformdata));
+      po1:= getmatrixcharstruct(msechar(card16(char)),
+                                     x11fontdataty(fontdata^.platformdata));
       if po1 = nil then begin
        po1:= getmatrixcharstruct(msechar(default_char),
                                 x11fontdataty(fontdata^.platformdata));
@@ -1536,7 +1572,8 @@ begin
   result:= 0;
   with fontdata^,x11fontdataty(platformdata),d.infopo^ do begin
    if fhasxft then begin
-    xfttextextents16(appdisp,pxftfont(font),text,count,@glyphinfo);
+    xfttextextentsutf16(appdisp,pxftfont(font),pointer(text),fcendianlittle,
+                                                          count*2,@glyphinfo);
     result:= glyphinfo.xoff;
    end
    else begin
@@ -1583,7 +1620,8 @@ begin
  with fontdata,x11fontdataty(platformdata),d.infopo^ do begin
   case d.matrixmode of
    fmm_linear: begin
-    if (word(char) >= min_char_or_byte2) and (word(char) <= max_char_or_byte2) then begin
+    if (word(char) >= min_char_or_byte2) and 
+                                  (word(char) <= max_char_or_byte2) then begin
      result:= pxcharstruct(pchar(per_char) +
                  (word(char) - min_char_or_byte2)*sizeof(xcharstruct));
     end;
@@ -2123,6 +2161,9 @@ var
   end;
  end;
 
+var
+ opapic,masksourcepic: tpicture;
+
 label
  endlab,endlab2;
 begin
@@ -2152,17 +2193,44 @@ begin
     ax:= x;
     ay:= y;
    end;
+   sx:= ax;
+   sy:= ay;
    pictop:= pictopsrc;
    maskpic:= 0;
    if (longword(opacity) <> maxopacity) and (mask = nil){monomask} then begin
-    maskpic:= createmaskpicture(opacity); 
+    maskpic:= createmaskpicture(opacity,bmk_rgb); 
               //clip_mask ignored by xrender
     pictop:= pictopover;
    end
    else begin
     if not monomask then begin
-     maskpic:= createmaskpicture(mask);
-     updatetransform(maskpic);
+     if (longword(opacity) <> maxopacity) then begin
+      ax:= 0;
+      ay:= 0;
+      bitmap:= gui_createpixmap(size,0,mask.kind);
+      if bitmap <> 0 then begin
+       xvalues.foreground:= 0;
+       bitmapgc2:= xcreategc(appdisp,bitmap,gcforeground,@xvalues);
+       if bitmapgc2 <> nil then begin
+        xfillrectangle(appdisp,bitmap,bitmapgc2,0,0,cx,cy);
+        xfreegc(appdisp,bitmapgc2);
+        opapic:= createmaskpicture(opacity,mask.kind);
+        masksourcepic:= createmaskpicture(mask);
+        maskpic:= createmaskpicture(bitmap,mask.kind);
+        xrendercomposite(appdisp,pictopover,masksourcepic,opapic,maskpic,
+                                                            x,y,0,0,0,0,cx,cy);
+        xrenderfreepicture(appdisp,opapic);
+        xrenderfreepicture(appdisp,masksourcepic);
+       end;
+       gui_freepixmap(bitmap);
+      end;
+     end
+     else begin
+      maskpic:= createmaskpicture(mask);
+     end;
+     if not(al_nomaskscale in alignment) then begin
+      updatetransform(maskpic);
+     end;
      pictop:= pictopover;
     end;
    end;
@@ -2286,9 +2354,15 @@ endlab2:
      end;
     end;
    end
-   else begin 
-    sx:= ax;
-    sy:= ay;
+   else begin //no colorconvert
+    if al_nomaskscale in alignment then begin
+     ax:= ax + maskshift.x;
+     ay:= ay + maskshift.y;
+    end
+    else begin
+     ax:= ax + maskshiftscaled.x;
+     ay:= ay + maskshiftscaled.y;
+    end;
     dx:= destrect^.x;
     dy:= destrect^.y;
     format1:= screenrenderpictformat;
@@ -2340,7 +2414,8 @@ endlab2:
      xfillrectangle(appdisp,pixmap2,tgc(maskgc.handle),0,0,cx,cy);
      maskgc.cliporigin:= subpoint(cliporigin,destrect^.pos);
      setregion(maskgc,region(gcclipregion));
-     xcopyarea(appdisp,amask,pixmap2,tgc(maskgc.handle),x,y,cx,cy,0,0);
+     xcopyarea(appdisp,amask,pixmap2,tgc(maskgc.handle),
+                             x+maskshiftscaled.x,y+maskshiftscaled.y,cx,cy,0,0);
      xvalues.clip_x_origin:= destrect^.x;
      xvalues.clip_y_origin:= destrect^.y;
      xvalues.clip_mask:= pixmap2;
@@ -2350,8 +2425,8 @@ endlab2:
     end
     else begin
      xvalues.clip_mask:= amask;
-     xvalues.clip_x_origin:= destrect^.x - x;
-     xvalues.clip_y_origin:= destrect^.y - y;
+     xvalues.clip_x_origin:= destrect^.x - x - maskshiftscaled.x;
+     xvalues.clip_y_origin:= destrect^.y - y - maskshiftscaled.y;
      xchangegc(appdisp,tgc(gc.handle),gcclipxorigin or gcclipyorigin or
                       gcclipmask,@xvalues);
     end;
@@ -2655,10 +2730,8 @@ begin
    with pxpoint(buffer.buffer)^ do begin
     with x11gcty(gc.platformdata).d do begin
      if df_opaque in gc.drawingflags then begin
-      xfttextextents16(appdisp,xftfont,text,count,@glyphinfo);
-//      xftdrawrect(xftdraw,@xftcolorbackground,x-glyphinfo.x,y-xftfont^.ascent,
-//              glyphinfo.width,xftfont^.ascent+xftfont^.descent);
-                   //unreliable!?
+      xfttextextentsutf16(appdisp,xftfont,pointer(text),fcendianlittle,
+                                                           count*2,@glyphinfo);
       xvalues.foreground:= xftcolorbackground.pixel;
       xchangegc(appdisp,tgc(gc.handle),gcforeground,@xvalues);
       with x11gcty(gc.platformdata).d.xftfontdata^ do begin
@@ -2688,7 +2761,8 @@ begin
       xvalues.foreground:= xftcolor.pixel;
       xchangegc(appdisp,tgc(gc.handle),gcforeground,@xvalues);
      end;
-     xftdrawstring16(xftdraw,@xftcolor,xftfont,x,y,text,count);
+     xftdrawstringutf16(xftdraw,@xftcolor,xftfont,x,y,pointer(text),
+                                               fcendianlittle,count*2);
     end;
    end
 {$ifdef FPC}{$checkpointer default}{$endif}
@@ -2996,38 +3070,38 @@ var
  
 function getxftlib: boolean;
 const
- funcs: array[0..18] of funcinfoty = (
-  (n: 'XftDrawDestroy'; d: {$ifndef FPC}@{$endif}@XftDrawDestroy),
-  (n: 'XftDrawSetClipRectangles'; d: {$ifndef FPC}@{$endif}@XftDrawSetClipRectangles),
-  (n: 'XftDrawCreate'; d: {$ifndef FPC}@{$endif}@XftDrawCreate),
-  (n: 'XftDrawSetClip'; d: {$ifndef FPC}@{$endif}@XftDrawSetClip),
-  (n: 'XftTextExtents16'; d: {$ifndef FPC}@{$endif}@XftTextExtents16),
-  (n: 'XftFontOpenName'; d: {$ifndef FPC}@{$endif}@XftFontOpenName),
-  (n: 'XftFontClose'; d: {$ifndef FPC}@{$endif}@XftFontClose),
-  (n: 'XftDrawString16'; d: {$ifndef FPC}@{$endif}@XftDrawString16),
-  (n: 'XftDefaultHasRender'; d: {$ifndef FPC}@{$endif}@XftDefaultHasRender),
-  (n: 'XftGetVersion'; d: {$ifndef FPC}@{$endif}@XftGetVersion),
-  (n: 'XftInit'; d: {$ifndef FPC}@{$endif}@XftInit),
-  (n: 'XftInitFtLibrary'; d: {$ifndef FPC}@{$endif}@XftInitFtLibrary),
-  (n: 'XftCharExists'; d: {$ifndef FPC}@{$endif}@XftCharExists),
-  (n: 'XftNameParse'; d: {$ifndef FPC}@{$endif}@XftNameParse),
-  (n: 'XftFontMatch'; d: {$ifndef FPC}@{$endif}@XftFontMatch),
-  (n: 'XftFontOpenPattern'; d: {$ifndef FPC}@{$endif}@XftFontOpenPattern),
-  (n: 'XftDefaultSubstitute'; d: {$ifndef FPC}@{$endif}@XftDefaultSubstitute),
-  (n: 'XftDrawPicture'; d: {$ifndef FPC}@{$endif}@XftDrawPicture),
-  (n: 'XftDrawSrcPicture'; d: {$ifndef FPC}@{$endif}@XftDrawSrcPicture)
+ funcs: array[0..21] of funcinfoty = (
+  (n: 'XftDrawDestroy'; d: @XftDrawDestroy),
+  (n: 'XftDrawSetClipRectangles'; d: @XftDrawSetClipRectangles),
+  (n: 'XftDrawCreate'; d: @XftDrawCreate),
+  (n: 'XftDrawSetClip'; d: @XftDrawSetClip),
+  (n: 'XftTextExtents16'; d: @XftTextExtents16),
+  (n: 'XftTextExtentsUtf16'; d: @XftTextExtentsUtf16),
+  (n: 'XftTextExtents32'; d: @XftTextExtents32),
+  (n: 'XftFontOpenName'; d: @XftFontOpenName),
+  (n: 'XftFontClose'; d: @XftFontClose),
+  (n: 'XftDrawString16'; d: @XftDrawString16),
+  (n: 'XftDrawStringUtf16'; d: @XftDrawStringUtf16),
+  (n: 'XftDefaultHasRender'; d: @XftDefaultHasRender),
+  (n: 'XftGetVersion'; d: @XftGetVersion),
+  (n: 'XftInit'; d: @XftInit),
+  (n: 'XftInitFtLibrary'; d: @XftInitFtLibrary),
+  (n: 'XftCharExists'; d: @XftCharExists),
+  (n: 'XftNameParse'; d: @XftNameParse),
+  (n: 'XftFontMatch'; d: @XftFontMatch),
+  (n: 'XftFontOpenPattern'; d: @XftFontOpenPattern),
+  (n: 'XftDefaultSubstitute'; d: @XftDefaultSubstitute),
+  (n: 'XftDrawPicture'; d: @XftDrawPicture),
+  (n: 'XftDrawSrcPicture'; d: @XftDrawSrcPicture)
   );
 begin
 {$ifndef staticxft}
  result:= false;
- try
-  initializefontconfig([]);
-  fhasfontconfig:= true;
-  getprocaddresses(xftnames,funcs);
- except
+ initializefontconfig([]);
+ fhasfontconfig:= true;
+ if getprocaddresses(xftnames,funcs,true) = 0 then begin
   exit;
  end;
-
 {$endif} //not staticxft
  result:= true;
 end;

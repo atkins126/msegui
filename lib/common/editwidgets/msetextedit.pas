@@ -64,6 +64,9 @@ type
    constructor create(owner: twidgetcol); reintroduce;
  end;
 
+ texteditoptionty = (teeo_bom,teeo_nobom); //[] -> use loaded
+ texteditoptionsty = set of texteditoptionty;
+ 
  tcustomtextedit = class(tcustomedit,igridwidget,istatfile)
   private
    fstatfile: tstatfile;
@@ -82,6 +85,8 @@ type
    fencoding: charencodingty;
    fxpos: integer;
    fstatpriority: integer;
+   fhasbom: boolean;
+   foptions: texteditoptionsty;
    procedure setstatfile(const Value: tstatfile);
    function geteditpos: gridcoordty;
    procedure seteditpos1(const value: gridcoordty);
@@ -108,6 +113,7 @@ type
    procedure setrow(const avalue: integer);
    function getcol: integer;
    procedure setcol(const avalue: integer);
+   procedure setoptions(const avalue: texteditoptionsty);
   protected
    fstate: texteditstatesty;
    fgridintf: iwidgetgrid;
@@ -157,6 +163,7 @@ type
    procedure setgridintf(const intf: iwidgetgrid);
    function getgridintf: iwidgetgrid;
    function getcellframe: framety; virtual;
+   function needscellfocuspaint(): boolean;
    function getcellcursor(const arow: integer; const acellzone: cellzonety;
                              const apos: pointty): cursorshapety; virtual;
    procedure updatecellzone(const row: integer; const apos: pointty;
@@ -288,7 +295,7 @@ type
                      // org mousepos = clientpos otherwise
                      //false if out of text, textpos clamped to textrange
    function textpostomousepos(const textpos: gridcoordty;
-                                      const screenorg: boolean = false): pointty;
+                                   const screenorg: boolean = false): pointty;
    function textpostomouserect(const textpos: gridcoordty;
                                      const screenorg: boolean = false): rectty;
                      //y:= top of character cell cx = 0 cy = linespacing
@@ -299,6 +306,8 @@ type
 
    property encoding: charencodingty read fencoding write fencoding 
                                                         default ce_locale;
+   property options: texteditoptionsty read foptions write setoptions
+                                                                 default [];
    property textflags default defaulttextflags - [tf_noselect];
    property statfile: tstatfile read fstatfile write setstatfile;
    property statvarname: msestring read getstatvarname write fstatvarname;
@@ -337,6 +346,7 @@ type
    property statvarname;
    property statpriority;
    property encoding;
+   property options;
    property marginlinepos;
                      //offset to innerclientrect.x
    property marginlinecolor;
@@ -394,7 +404,7 @@ function istextdblclick(const ainfo: textmouseeventinfoty): boolean;
 
 implementation
 uses
- msefileutils,sysutils,msesysutils,msewidgets,
+ msefileutils,sysutils,msesysutils,msewidgets,msebits,
  msekeyboard,mseactions;
 
 const
@@ -547,6 +557,11 @@ begin
    result:= getinnerframe;
   end;
  end;
+end;
+
+function tcustomtextedit.needscellfocuspaint(): boolean;
+begin
+ result:= inherited needsfocuspaint();
 end;
 
 function tcustomtextedit.getcellcursor(const arow: integer;
@@ -913,6 +928,7 @@ procedure tcustomtextedit.loadfromstream(const stream: ttextstream;
                restorestate: boolean = false);
 var
  statsave: texteditstatety;
+ po1: pmsestring;
 begin
  checkgrid;
  ffilerights:= stream.filerights;
@@ -923,6 +939,16 @@ begin
  clear;
  try
   flines.loadfromstream(stream);
+  fhasbom:= false;
+  if stream.encoding = ce_utf8 then begin
+   if (flines.count > 0) then begin
+    po1:= flines.datapo;
+    if (po1^ <> '') and (card16(po1^[1]) = $feff) then begin
+     fhasbom:= true;
+     po1^:= copy(po1^,2,bigint);
+    end;
+   end;
+  end;
   fgridintf.getcol.grid.rowcount:= flines.count;
   if restorestate then begin
    setstate(statsave);
@@ -952,9 +978,15 @@ end;
 
 procedure tcustomtextedit.savetostream(const stream: ttextstream;
                                 const resetmodified: boolean);
+const
+ bom: array[0..2] of byte = ($ef,$bb,$bf);
 begin
  stream.encoding:= fencoding;
 // stream.filerights:= ffilerights;
+ if (fencoding = ce_utf8) and (fhasbom or (teeo_bom in foptions)) and 
+                                     not(teeo_nobom in foptions) then begin
+  stream.writebuffer(bom,length(bom));
+ end;
  flines.savetostream(stream);
  if resetmodified then begin
   modified:= false;
@@ -2456,6 +2488,14 @@ end;
 procedure tcustomtextedit.getvaluedata(out dest);
 begin
  msestring(dest):= text;
+end;
+
+procedure tcustomtextedit.setoptions(const avalue: texteditoptionsty);
+begin
+ if foptions <> avalue then begin
+  foptions:= texteditoptionsty(setsinglebit(card32(avalue),card32(foptions),
+                                        card32([teeo_bom,teeo_nobom])));
+ end;
 end;
 
 { tundotextedit }

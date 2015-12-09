@@ -1,4 +1,4 @@
-{ MSEgui Copyright (c) 1999-2014 by Martin Schreiber
+{ MSEgui Copyright (c) 1999-2015 by Martin Schreiber
 
     See the file COPYING.MSE, included in this distribution,
     for details about the copyright.
@@ -165,6 +165,7 @@ type
    fformstate: formstatesty;
    fscrollbox: tformscrollbox; //needed to distinguish between scrolled and
                                //unscrolled  (mainmenu...) widgets
+   function internalgeticon(): tmaskedbitmap; virtual;
    procedure iconchanged(const sender: tobject);
    procedure aftercreate; virtual;
    function createmainmenuwidget: tframemenuwidget; virtual;
@@ -221,7 +222,8 @@ type
    function getstatvarname: msestring;
    function getstatpriority: integer;
    function getwindowcaption: msestring; virtual;
-   //idockcontroller
+    //idockcontroller
+   function getchildicon: tmaskedbitmap; virtual;
    function checkdock(var info: draginfoty): boolean;
    function getbuttonrects(const index: dockbuttonrectty): rectty;  
    function getplacementrect: rectty;
@@ -244,6 +246,7 @@ type
    procedure afterconstruction; override;
    procedure freeinstance override;
    procedure reload(const callafterload: boolean = false);
+   procedure writestate(writer: twriter); override;
    
    procedure insertwidget(const widget: twidget; const apos: pointty); override;
    procedure dolayout(const sender: twidget); override;
@@ -423,21 +426,31 @@ type
  end;
 
  mainformclassty = class of tmainform;
-  
+ tcustomdockform = class;
+ 
  tformdockcontroller = class(tnochildrendockcontroller)
   protected
+   fowner: tcustomdockform;
    procedure setoptionsdock(const avalue: optionsdockty); override;
+   procedure dolayoutchanged(); override; 
+   procedure childstatechanged(const sender: twidget;
+                           const newstate,oldstate: widgetstatesty); override;
+  public
+   constructor create(const aowner: tcustomdockform);
  end;
 
  tcustomdockform = class(tcustommseform,idocktarget)
   private
+   fdockingareacaption: msestring;
    function getdockcontroller: tdockcontroller;
    procedure setdragdock(const Value: tformdockcontroller);
    function getframe: tgripframe;
    procedure setframe(const avalue: tgripframe);
+   procedure setdockingareacaption(const avalue: msestring);
   protected
    fdragdock: tformdockcontroller;
    procedure internalcreateframe; override;
+   function internalgeticon(): tmaskedbitmap; override;
    procedure updateoptions; override;
    function getoptions: formoptionsty; override;
    procedure statreading; override;
@@ -452,13 +465,21 @@ type
    procedure doactivate; override;
    procedure parentchanged; override;
    function getwindowcaption: msestring; override;
+   procedure dolayoutchanged(const sender: tdockcontroller); override;
+   procedure checkdockicon();
+   function getchildicon(): tmaskedbitmap; override;
+   procedure loaded(); override;
+   procedure doenter(); override;
+   procedure doexit(); override;
   public
    constructor create(aowner: tcomponent; load: boolean); override;
-   destructor destroy; override;
+   destructor destroy(); override;
    procedure activate(const abringtofront: boolean = true;
                                const aforce: boolean = false); override;
    function canfocus: boolean; override;
    procedure dragevent(var info: draginfoty); override;
+   property dockingareacaption: msestring read fdockingareacaption 
+                                                   write setdockingareacaption;
   published
    property dragdock: tformdockcontroller read fdragdock write setdragdock;
    property frame: tgripframe read getframe write setframe;
@@ -479,6 +500,7 @@ type
    property statpriority;
    property caption;
    property icon;
+   property dockingareacaption;
 
    property oncreate;
    property oncreated;
@@ -551,6 +573,7 @@ type
    procedure dopaintforeground(const acanvas: tcanvas); override;
    function getdockcontroller: tdockcontroller;
    procedure mouseevent(var info: mouseeventinfoty); override;
+   procedure dopaintbackground(const canvas: tcanvas); override;
   public
    constructor create(aowner: tcustomdockform); reintroduce;
  end;
@@ -678,6 +701,7 @@ begin
  inherited create(aowner); //dockcontroller needs owner
  setsubcomponent(true);
  exclude(fwidgetstate,ws_iswidget);
+ include(fwidgetstate1,ws1_designactive);
  foptionswidget:= defaultcontaineroptionswidget;
 // parentwidget:= aowner;
  setlockedparentwidget(aowner);
@@ -821,6 +845,16 @@ procedure tdockformscrollbox.mouseevent(var info: mouseeventinfoty);
 begin
  inherited;
  getdockcontroller.checkmouseactivate(self,info);
+end;
+
+procedure tdockformscrollbox.dopaintbackground(const canvas: tcanvas);
+begin
+ inherited;
+ with tcustomdockform(owner) do begin
+  if fdockingareacaption <> '' then begin
+   paintdockingareacaption(canvas,self,fdockingareacaption);
+  end;
+ end;
 end;
 
 { tcustommseform }
@@ -1055,6 +1089,12 @@ begin
  if callafterload then begin
   doafterload;
  end;
+end;
+
+procedure tcustommseform.writestate(writer: twriter);
+begin
+ tscrollboxframe(fscrollbox.frame).scrollpos:= nullpoint;
+ inherited;
 end;
 
 {$ifdef mse_with_ifi}
@@ -1694,7 +1734,12 @@ end;
 function tcustommseform.getbuttonrects(const index: dockbuttonrectty): rectty;  
 begin
  if fframe = nil then begin
-  result:= nullrect;
+  if index = dbr_handle then begin
+   result:= clientrect;
+  end
+  else begin
+   result:= nullrect;
+  end;
  end
  else begin
   result:= tgripframe(fframe).buttonrects[index];
@@ -1736,6 +1781,14 @@ end;
 function tcustommseform.getwindowcaption: msestring;
 begin
  result:= fcaption;
+end;
+
+function tcustommseform.getchildicon: tmaskedbitmap;
+begin
+ result:= nil;
+ if ficon.hasimage then begin
+  result:= ficon;
+ end;
 end;
 
 procedure tcustommseform.windowcreated;
@@ -1876,15 +1929,14 @@ var
 begin
  if ficonchanging = 0 then begin
   inc(ficonchanging);
-//  ficon.colormask:= false;
-  dec(ficonchanging); 
   if ownswindow then begin
-   getwindowicon(ficon,icon1,mask1);
+   getwindowicon(internalgeticon(),icon1,mask1);
    gui_setwindowicon(window.winid,icon1,mask1);
    if (fo_main in foptions) and not (csdesigning in componentstate) then begin
     gui_setapplicationicon(icon1,mask1);
    end;
   end;
+  dec(ficonchanging); 
  end;
 end;
 
@@ -1996,6 +2048,11 @@ begin
  setlinkedvar(avalue,tmsecomponent(factivatortarget));
 end;
 
+function tcustommseform.internalgeticon(): tmaskedbitmap;
+begin
+ result:= ficon;
+end;
+
 function tcustommseform.getstatpriority: integer;
 begin
  result:= fstatpriority;
@@ -2044,13 +2101,37 @@ end;
 
 { tformdockcontroller }
 
+constructor tformdockcontroller.create(const aowner: tcustomdockform);
+begin
+ fowner:= aowner;
+ inherited create(idockcontroller(aowner));
+end;
+
 procedure tformdockcontroller.setoptionsdock(const avalue: optionsdockty);
 begin
  inherited;
- updatebit({$ifdef FPC}longword{$else}longword{$endif}(tdockform(fintf.getwidget).foptions),
-             ord(fo_savepos),od_savepos in foptionsdock);
- updatebit({$ifdef FPC}longword{$else}longword{$endif}(tdockform(fintf.getwidget).foptions),
-             ord(fo_savezorder),od_savezorder in foptionsdock);
+ updatebit(longword(tdockform(fintf.getwidget).foptions),
+                           ord(fo_savepos),od_savepos in foptionsdock);
+ updatebit(longword(tdockform(fintf.getwidget).foptions),
+                     ord(fo_savezorder),od_savezorder in foptionsdock);
+end;
+
+procedure tformdockcontroller.dolayoutchanged();
+begin
+ inherited;
+ if od_childicons in foptionsdock then begin
+  fowner.iconchanged(nil);
+ end;
+end;
+
+procedure tformdockcontroller.childstatechanged(const sender: twidget;
+             const newstate: widgetstatesty; const oldstate: widgetstatesty);
+begin
+ inherited;
+ if (od_childicons in foptionsdock) and (ws_entered in newstate) and 
+                            not (ws_entered in oldstate) then begin
+  fowner.iconchanged(nil);
+ end;
 end;
 
 { tcustomdockform }
@@ -2058,7 +2139,7 @@ end;
 constructor tcustomdockform.create(aowner: tcomponent; load: boolean);
 begin
  if fdragdock = nil then begin
-  fdragdock:= tformdockcontroller.create(idockcontroller(self));
+  fdragdock:= tformdockcontroller.create(self);
  end;
  if fscrollbox = nil then begin
   fscrollbox:= tdockformscrollbox.create(self);
@@ -2066,7 +2147,7 @@ begin
  inherited;
 end;
 
-destructor tcustomdockform.destroy;
+destructor tcustomdockform.destroy();
 begin
  inherited;
  fdragdock.Free;
@@ -2095,6 +2176,15 @@ end;
 procedure tcustomdockform.internalcreateframe;
 begin
  tgripframe.create(iscrollframe(self),fdragdock);
+end;
+
+function tcustomdockform.internalgeticon(): tmaskedbitmap;
+begin
+ result:= inherited internalgeticon();
+ if (result = nil) or not result.hasimage() and 
+              (od_childicons in fdragdock.optionsdock) then begin
+  result:= fdragdock.childicon();
+ end;
 end;
 
 procedure tcustomdockform.dragevent(var info: draginfoty);
@@ -2241,6 +2331,51 @@ end;
 function tcustomdockform.getwindowcaption: msestring;
 begin
  result:= fdragdock.getfloatcaption;
+end;
+
+procedure tcustomdockform.dolayoutchanged(const sender: tdockcontroller);
+begin
+ inherited;
+ checkdockicon();
+end;
+
+procedure tcustomdockform.checkdockicon();
+begin
+ if od_childicons in fdragdock.optionsdock then begin
+  iconchanged(nil);
+ end;
+end;
+
+function tcustomdockform.getchildicon(): tmaskedbitmap;
+begin
+ result:= inherited getchildicon();
+ if result = nil then begin
+  result:= fdragdock.childicon();
+ end;
+end;
+
+procedure tcustomdockform.loaded();
+begin
+ inherited;
+ checkdockicon();
+end;
+
+procedure tcustomdockform.doenter();
+begin
+ inherited;
+ fdragdock.statechanged(fwidgetstate);
+end;
+
+procedure tcustomdockform.doexit();
+begin
+ inherited;
+ fdragdock.statechanged(fwidgetstate);
+end;
+
+procedure tcustomdockform.setdockingareacaption(const avalue: msestring);
+begin
+ fdockingareacaption:= avalue;
+ invalidate;
 end;
 
 { tdockform}

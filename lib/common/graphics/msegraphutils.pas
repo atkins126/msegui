@@ -294,6 +294,7 @@ type
  alignmentty = (al_left,al_xcentered,al_right,al_top,al_ycentered,al_bottom,
                 al_grayed,
                 al_stretchx,al_stretchy,al_fit,al_tiled,
+                al_nomaskscale,
                 al_intpol,al_or,al_and);
  alignmentsty = set of alignmentty;
 
@@ -960,7 +961,6 @@ begin
   result[int1+int2]:= cl_user + longword(int1);
  end;
 end;
-
 
 function rotateframe(const aframe: framety; const olddirection,
                   newdirection: graphicdirectionty): framety;

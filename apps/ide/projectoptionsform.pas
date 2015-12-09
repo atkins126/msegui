@@ -196,6 +196,7 @@ type
    fbackupfilecount: integer;
    fencoding: integer;
    fnoformdesignerdocking: boolean;
+   ftrimtrailingwhitespace: boolean;
    function limitgridsize(const avalue: integer): integer;
    procedure setgridsizex(const avalue: integer);
    procedure setgridsizey(const avalue: integer);
@@ -245,6 +246,8 @@ type
    property backupfilecount: integer read fbackupfilecount 
                                               write fbackupfilecount;
    property encoding: integer read fencoding write fencoding;
+   property trimtrailingwhitespace: boolean read ftrimtrailingwhitespace
+                                                write ftrimtrailingwhitespace;
    property codetemplatedirs: msestringarty read getcodetemplatedirs write
                   setcodetemplatedirs;
  end;
@@ -334,6 +337,7 @@ type
    fgdbserverstartonce: boolean;
    fraiseonbreak: boolean;
    fgdbloadtimeout: realty;
+   ffpcgdbworkaround: boolean;
   protected
    function gett: tobject; override;
    function gettexp: tobject; override;
@@ -369,6 +373,8 @@ type
                                                  write fexceptignore;
    property nodebugbeginend: boolean read fnodebugbeginend 
                                           write fnodebugbeginend;
+   property fpcgdbworkaround: boolean read ffpcgdbworkaround 
+                                                   write ffpcgdbworkaround;
  end;
    
  tprojectoptions = class(toptions)
@@ -424,6 +430,7 @@ type
    fcolornote: colorty;
    fuid: integer;
    fforcezorder: longbool;
+   ftoolshortcuts: integerarty;
    procedure setforcezorder(const avalue: longbool);
   protected
    function gett: tobject; override;
@@ -483,6 +490,7 @@ type
    property toolhide: longboolarty read ftoolhide write ftoolhide;
    property toolparse: longboolarty read ftoolparse write ftoolparse;
    property toolmessages: longboolarty read ftoolmessages write ftoolmessages;
+   property toolshortcuts: integerarty read ftoolshortcuts write ftoolshortcuts;
 
    property fontalias: msestringarty read ffontalias write ffontalias;
    property fontancestors: msestringarty read ffontancestors 
@@ -538,7 +546,7 @@ type
    moveonfirstclick: tbooleanedit;
    debuggerpage: ttabpage;
    debugcommand: tfilenameedit;
-   debugoptions: tstringedit;
+   debugoptions: tmemodialogedit;
    ttabwidget1: ttabwidget;
    ttabpage6: ttabpage;
    sourcedirgrid: twidgetgrid;
@@ -722,7 +730,6 @@ type
    editfontcolor: tcoloredit;
    editbkcolor: tcoloredit;
    editfontantialiased: tbooleanedit;
-   editmarkbrackets: tbooleanedit;
    statementcolor: tcoloredit;
    ttabpage17: ttabpage;
    ttabpage18: ttabpage;
@@ -790,6 +797,12 @@ type
    sourcebase: tfilenameedit;
    tspacer7: tspacer;
    gdbloadtimeout: trealedit;
+   toolshortcuts: tenumedit;
+   toolsc: tstringedit;
+   toolscalt: tstringedit;
+   editmarkbrackets: tbooleanedit;
+   trimtrailingwhitespace: tbooleanedit;
+   fpcgdbworkaround: tbooleanedit;
    procedure acttiveselectondataentered(const sender: TObject);
    procedure colonshowhint(const sender: tdatacol; const arow: Integer; 
                       var info: hintinfoty);
@@ -833,6 +846,9 @@ type
    procedure activateonbreakset(const sender: TObject; var avalue: Boolean;
                    var accept: Boolean);
    procedure sourcedirhint(const sender: TObject; var info: hintinfoty);
+   procedure toolshortcutdropdown(const sender: TObject);
+   procedure toolsrowdatachanged(const sender: tcustomgrid;
+                   const acell: gridcoordty);
   private
    procedure activegroupchanged;
  end;
@@ -873,11 +889,11 @@ uses
  objectinspector,msebits,msefileutils,msedesignintf,guitemplates,
  watchform,stackform,main,projecttreeform,findinfileform,
  selecteditpageform,programparametersform,sourceupdate,mseimagelisteditor,
- msesysenvmanagereditor,targetconsole,
+ msesysenvmanagereditor,targetconsole,actionsmodule,mseactions,
  msefilemacros,mseenvmacros,msemacmacros,mseexecmacros,msestrmacros,
  msedesigner,panelform,watchpointsform,commandlineform,messageform,
- componentpaletteform,mserichstring,msesettings,formdesigner,actionsmodule,
- msestringlisteditor,msetexteditor,msepropertyeditors,mseshapes,mseactions,
+ componentpaletteform,mserichstring,msesettings,formdesigner,
+ msestringlisteditor,msetexteditor,msepropertyeditors,mseshapes,
  componentstore,cpuform,msesysutils,msecomptree,msefont,typinfo
  {$ifndef mse_no_db}{$ifdef FPC},msedbfieldeditor{$endif}{$endif}
  {$ifndef mse_no_ifi}{$ifdef FPC},mseificomponenteditors,
@@ -1204,6 +1220,7 @@ var
  int1,int2: integer;
  bo1: boolean;
  item1: tmenuitem;
+ act1: taction;
 begin
  li:= getmacros;
  with projectoptions do begin
@@ -1326,8 +1343,16 @@ begin
        if (int1 > high(toolfiles)) or (int1 > high(toolparams)) then begin
         break;
        end;
-       insert(bigint,[toolmenus[int1]],[[mao_asyncexecute]],
+       int2:= insert(bigint,[toolmenus[int1]],
+                  [[mao_asyncexecute,mao_shortcutcaption]],
                                [],[{$ifdef FPC}@{$endif}mainfo.runtool]);
+       if (int1 <= high(toolshortcuts)) and 
+           actionsmo.gettoolshortcutaction(toolshortcuts[int1],act1) then begin
+        with items[int2] do begin
+         shortcuts:= act1.shortcuts;
+         shortcuts1:= act1.shortcuts1;
+        end;
+       end;
       end;
      end;
     end
@@ -1439,7 +1464,7 @@ begin
   ignoreexceptionclasses:= nil;
 
   additem(fmakeoptions,'-l -Mobjfpc -Sh -Fcutf8');
-  additem(fmakeoptions,'-gl');
+  additem(fmakeoptions,'-gl -O-');
   additem(fmakeoptions,'-B');
   additem(fmakeoptions,'-O2 -XX -CX -Xs');
   setlength(fmakeoptionson,length(fmakeoptions));
@@ -1816,6 +1841,13 @@ procedure projectoptionstoform(fo: tprojectoptionsfo);
 var
  int1,int2: integer;
 begin
+ with projectoptions do begin
+  int1:= length(o.toolshortcuts);
+  setlength(o.ftoolshortcuts,length(o.t.toolmenus));
+  for int2:= int1 to high(o.toolshortcuts) do begin
+   o.toolshortcuts[int2]:= -1; //init for backward compatibility
+  end;
+ end;
  {$ifdef mse_with_ifi}
  mainfo.statoptions.objtovalues(fo);
  {$endif}
@@ -1937,6 +1969,7 @@ begin
   fo.filefiltergrid[0].datalist.asarray:= e.t.filemasknames;
   fo.filefiltergrid[1].datalist.asarray:= e.t.filemasks;
   fo.settingsdataent(nil);
+  
  end;
 end;
 
@@ -2033,6 +2066,7 @@ var
 begin
  projecttree.updatelist;
  createcpufo;
+ mainfo.gdb.fpcworkaround:= projectoptions.d.fpcgdbworkaround;
  sourceupdater.unitchanged;
  for int1:= 0 to designer.modules.count - 1 do begin
   tformdesignerfo(designer.modules[int1]^.designform).updateprojectoptions();
@@ -2046,7 +2080,7 @@ var
 begin
  result:= false;
  try
-  statreader:= tstatreader.create(filename,ce_utf8n);
+  statreader:= tstatreader.create(filename,ce_utf8);
   try
    application.beginwait;
    updateprojectoptions(statreader,filename);
@@ -2071,7 +2105,7 @@ begin
  if filename = '' then begin
   filename:= projectoptions.projectfilename;
  end;
- statwriter:= tstatwriter.create(filename,ce_utf8n,true);
+ statwriter:= tstatwriter.create(filename,ce_utf8,true);
  try
   updateprojectoptions(statwriter,filename);
  finally
@@ -2507,7 +2541,7 @@ var
  write1: tstatwriter;
 begin
  astream:= ttextstream.create; //memory stream
- write1:= tstatwriter.create(astream,ce_utf8n);
+ write1:= tstatwriter.create(astream,ce_utf8);
  try
   write1.setsection('projectoptions');
   updateprojectsettings(write1); //save projectoptions state
@@ -2521,7 +2555,7 @@ var
  read1: tstatreader;
 begin
  astream.position:= 0;
- read1:= tstatreader.create(astream,ce_utf8n);
+ read1:= tstatreader.create(astream,ce_utf8);
  try
   read1.setsection('projectoptions');
   updateprojectsettings(read1); //restore projectoptions state
@@ -2573,7 +2607,7 @@ begin
   end;
   projectoptions.disabled:= getdisabledoptions;
   try
-   read1:= tstatreader.create(fname1,ce_utf8n);
+   read1:= tstatreader.create(fname1,ce_utf8);
    try
     read1.setsection('projectoptions');
     if projectoptions.o.settingsprojecttree then begin
@@ -2628,7 +2662,7 @@ begin
   expandprmacros1(fname1);
  end;
  if fname1 <> '' then begin
-  stat1:= tstatwriter.create(fname1,ce_utf8n,true);
+  stat1:= tstatwriter.create(fname1,ce_utf8,true);
   with projectoptions do begin
    try
     savestat(stream1);
@@ -2702,6 +2736,36 @@ begin
  end
  else begin
   hintexpandedmacros(sender,info);
+ end;
+end;
+
+procedure tprojectoptionsfo.toolshortcutdropdown(const sender: TObject);
+var
+ i1: int32;
+ act1: taction;
+begin
+ with toolshortcuts.dropdown do begin
+  for i1:= 0 to valuelist.count-1 do begin
+   if actionsmo.gettoolshortcutaction(i1,act1) then begin
+    with act1 do begin
+     cols[1][i1]:= encodeshortcutname(shortcuts);
+     cols[2][i1]:= encodeshortcutname(shortcuts1);
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure tprojectoptionsfo.toolsrowdatachanged(const sender: tcustomgrid;
+               const acell: gridcoordty);
+var
+ act1: taction;
+begin
+ if actionsmo.gettoolshortcutaction(toolshortcuts[acell.row],act1) then begin
+  with act1 do begin
+   toolsc[acell.row]:= encodeshortcutname(shortcuts);
+   toolscalt[acell.row]:= encodeshortcutname(shortcuts1);
+  end;
  end;
 end;
 
@@ -2831,7 +2895,7 @@ begin
  additem(fexceptclassnames,'EconvertError');
  additem(fexceptignore,false);
  fgdbloadtimeout:= emptyreal;
-
+ fpcgdbworkaround:= true;
  inherited;
 end;
 

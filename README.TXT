@@ -1,13 +1,13 @@
 MSEide+MSEgui Pascal Cross Platform GUI Development System.
 
-2015-05-13 Version 3.8
+2015-11-13 Version 4.0
 Copyright (c) 1999-2015 by Martin Schreiber
 
-- Compiles with FPC 2.6.2 or 2.6.4
+- Compiles with FPC 2.6.4 or FPC 3.0.0
 - Tested on i386-linux SuSE 13.1, x86_64-linux SuSE 13.1, x86_64-freebsd,
   Raspberry Pi, i386-win32 2000, XP and Vista.
 - Links to xlib and gdi32, no external widget library needed.
-- Internal character encoding is UCS2.
+- Internal character encoding is utf-16.
 - Uses anti aliased fonts on Linux (Xft).
 - All screen drawing is double buffered.
 - Has docking forms and MDI.
@@ -34,10 +34,11 @@ Package maintainers may delete the files "apps/ide/COPYING.GPL",
 
 Installation:
 *************
-1. Download and install FPC 2.6.4, you can get it from 
+1. Download and install FPC 3.0.0, you can get it from 
    http://www.freepascal.org/download.var
-2. Download mseide_msegui_src_3_8.zip and the mseide_* archive for your system.
-   http://sourceforge.net/projects/mseide-msegui/files/mseide-msegui/3.8/
+2. Download mseide_msegui_src_4_0.zip and the mseide_* archive
+   for your system.
+   http://sourceforge.net/projects/mseide-msegui/files/mseide-msegui/4.0/
 3. Extract them to a directory of your choice ('yourdirectory') .
 4. Run 'yourdirectory/bin/mseide' on linux and freebsed or 
    'yourdirectory\bin\mseide.exe' on windows.
@@ -334,14 +335,15 @@ For Raspberry Pi:
 
 - Start MSEide, in 'Settings'-'Configure MSEide'-'Global Macros' add:
 
-Name          Value
+Name            Value
 
-CROSSMSEDIR   <MSEide+MSEgui directory>
-CROSSFPCDIR   <your crossfpc directory>
-HOSTIP        <the IP of the host>
-REMOTEIP      <the IP of the remote target>
-REMOTEPORT    <the remote port, ex: 2345>
-REMOTEUSER    pi
+CROSSMSEDIR     <MSEide+MSEgui directory>
+CROSSFPCDIR     <your crossfpc directory>
+CROSSFPCVERSION 3.0.1
+HOSTIP          <the IP of the host>
+REMOTEIP        <the IP of the remote target>
+REMOTEPORT      <the remote port, ex: 2345>
+REMOTEUSER      pi
 
 - 'Project'-'New'-'From Template', select "crossarmdefault.prj" or
   "crossarmconsole.prj".

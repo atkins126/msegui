@@ -380,6 +380,15 @@ var
   tr       : TIBTrans;
   s        : string;
   int1: integer;
+  s2: string;
+  i2: int32;
+
+ procedure paramerror();
+ begin
+  raise econnectionerror.create(self,
+                           'Invalid transaction parameter "'+s+'"','',0);
+ end; //paramerror
+
 begin
   result := false;
 
@@ -408,7 +417,23 @@ begin
      else if s='isc_tpb_ignore_limbo' then TPB := TPB + chr(isc_tpb_ignore_limbo)
      else if s='isc_tpb_autocommit' then TPB := TPB + chr(isc_tpb_autocommit)
      else if s='isc_tpb_restart_requests' then TPB := TPB + chr(isc_tpb_restart_requests)
-     else if s='isc_tpb_no_auto_undo' then TPB := TPB + chr(isc_tpb_no_auto_undo);
+     else if s='isc_tpb_no_auto_undo' then TPB := TPB + chr(isc_tpb_no_auto_undo)
+     else if pos('isc_tpb_lock_timeout',s) = 1 then begin
+      i2:= length('isc_tpb_lock_timeout');
+      if length(s) > i2 then begin
+       s2:= trim(copy(s,i2+1,bigint));
+       if trystrtoint(s2,i2) then begin
+        tpb:= tpb + chr(isc_tpb_lock_timeout)+#4+
+             chr(i2)+chr(i2 shr 8)+chr(i2 shr 16)+chr(i2 shr 24);
+       end
+       else begin
+        paramerror();
+       end;
+      end
+      else begin
+       paramerror();
+      end;
+     end;
     end;
     TransactionHandle := nil;
     if isc_start_transaction(@Status, @TransactionHandle, 1,
@@ -437,6 +462,8 @@ end;
 
 
 procedure TIBConnection.DoInternalConnect;
+const
+ utf8name = 'UTF8';
 var
   DPB           : string;
   ADatabaseName : String;
@@ -457,14 +484,20 @@ begin
   end;
   if (Role <> '') then
      DPB := DPB + chr(isc_dpb_sql_role_name) + chr(Length(Role)) + Role;
-  if Length(CharSet) > 0 then
+  if Length(CharSet) > 0 then begin
     DPB := DPB + Chr(isc_dpb_lc_ctype) + Chr(Length(CharSet)) + CharSet;
+  end
+  else begin
+   if dbo_utf8 in fcontroller.options then begin
+    DPB := DPB + Chr(isc_dpb_lc_ctype) + Chr(Length(utf8name)) + utf8name;
+   end;
+  end;
 
   FSQLDatabaseHandle := nil;
   if HostName <> '' then ADatabaseName := HostName+':'+DatabaseName
     else ADatabaseName := DatabaseName;
-  if isc_attach_database(@FStatus, Length(ADatabaseName), @ADatabaseName[1], @FSQLDatabaseHandle,
-         Length(DPB), @DPB[1]) <> 0 then
+  if isc_attach_database(@FStatus, Length(ADatabaseName), @ADatabaseName[1],
+                           @FSQLDatabaseHandle,Length(DPB), @DPB[1]) <> 0 then
     CheckError('DoInternalConnect', FStatus);
   SetDBDialect;
 {$IfDef LinkDynamically}

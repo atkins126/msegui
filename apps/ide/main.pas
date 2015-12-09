@@ -38,7 +38,7 @@ uses
  mselistbrowser,projecttreeform,msepipestream,msestringcontainer,msesys,
  msewidgets;
 const
- versiontext = '3.9';
+ versiontext = '4.0.1';
  idecaption = 'MSEide';
  statname = 'mseide';
 
@@ -356,7 +356,7 @@ uses
  regdb,regreport,
 {$endif}
 {$ifdef mse_with_ifi}
- regifi,{$ifdef mse_with_ifirem}regifirem,{$endif}
+ regifi,{$ifndef mse_no_ifirem}regifirem,{$endif}
 {$endif}
 {$ifdef mse_with_pascalscript}
  regpascalscript,
@@ -458,9 +458,12 @@ var
   for int1:= 0 to high(modulenames) do begin
    if modulenames[int1] = wstr2 then begin
     if int1 <= high(modulefilenames) then begin
-     if findfile(modulefilenames[int1],projectoptions.d.texp.sourcedirs,wstr1) or
+     wstr1:= modulefilenames[int1];
+     if relocatepath(projectoptions.projectdir,'',wstr1,[pro_preferenew]) or
+            findfile(modulefilenames[int1],
+                           projectoptions.d.texp.sourcedirs,wstr1) or
             findfile(filename(modulefilenames[int1]),
-            projectoptions.d.texp.sourcedirs,wstr1) then begin
+                            projectoptions.d.texp.sourcedirs,wstr1) then begin
       try
        po1:= openformfile(wstr1,false,false,false,false,false);
        result:= (po1 <> nil) and 
@@ -2262,10 +2265,17 @@ var
  macrolist: tmacrolist;
  copiedfiles: filenamearty;
  bo1: boolean;
-  
+label
+ endlab;  
 begin
  mstr2:= projecttemplatedir; //use macros of current project
- if openproject('') then begin
+ if fromprogram then begin
+  if (checksave() = mr_cancel) or not closeall(false) then begin
+   exit;
+  end;
+  setprojectname('');
+ end;
+ if fromprogram or openproject('') then begin
   gdb.closegdb;
   cleardebugdisp;
   sourcechanged(nil);
@@ -2297,6 +2307,9 @@ begin
      expandprojectmacros;
     end;
     aname:= aname + '.prj';
+   end
+   else begin
+    goto endlab;
    end;
   end;
   if filedialog(aname,[fdo_save,fdo_checkexist],c[ord(str_newproject)],
@@ -2384,6 +2397,7 @@ begin
    end;
   end
   else begin
+endlab:
    projectoptions.projectfilename:= '';
    projectoptions.modified:= true;
   end;
@@ -2926,7 +2940,7 @@ procedure tmainfo.savewindowlayout(const astream: ttextstream);
 var
  statwriter: tstatwriter;
 begin
- statwriter:= tstatwriter.create(astream,ce_utf8n);
+ statwriter:= tstatwriter.create(astream,ce_utf8);
  try
   statwriter.setsection('breakpoints');
   beginpanelplacement();
@@ -2946,7 +2960,7 @@ procedure tmainfo.loadwindowlayout(const astream: ttextstream);
 var
  statreader: tstatreader;
 begin
- statreader:= tstatreader.create(astream,ce_utf8n);
+ statreader:= tstatreader.create(astream,ce_utf8);
  try
   beginpanelplacement();
   statreader.setsection('breakpoints');

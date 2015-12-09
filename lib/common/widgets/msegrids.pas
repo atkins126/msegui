@@ -1708,9 +1708,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -1718,9 +1720,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-   
+}   
    property options;
    property optionsskin;
 
@@ -2163,6 +2167,8 @@ type
    procedure initnewcomponent(const ascale: real); override;
    procedure synctofontheight; override;
    procedure dragevent(var info: draginfoty); override;
+   function internaldragevent(var info: draginfoty): boolean; virtual;
+                                //true if processed
    function actualcursor(const apos: pointty): cursorshapety; override;
 
    procedure beginupdate;
@@ -2277,9 +2283,10 @@ type
                                   const auserinput: boolean = false);
    procedure deleterow(aindex: integer; acount: integer = 1;
                                   const auserinput: boolean = false);
-   procedure appinsrow(aindex: integer;const auserinput: boolean = false); 
+   function appinsrow(aindex: integer;const auserinput: boolean = false): int32; 
            //insert or append empty row, set focused row to index
-           // empty row removed by exit row if og_noinsertempty
+           //empty row removed by exit row if og_noinsertempty
+           //returns insert index
    function isinsertempty: boolean; 
          //true if row will be removed by og_noinsertempty
    function isautoappend: boolean; //true if last row is auto appended
@@ -2547,7 +2554,7 @@ type
    procedure setupeditor(const acell: gridcoordty; const focusin: boolean); virtual;
    procedure dofontheightdelta(var delta: integer); override;
    procedure checkcellvalue(var accept: boolean); override;
-   procedure rootchanged(const awidgetregionivalid: boolean); override;
+   procedure rootchanged(const aflags: rootchangeflagsty); override;
    procedure updatelayout; override;
    procedure firstcellclick(const cell: gridcoordty; 
                       var info: mouseeventinfoty); override;
@@ -10850,7 +10857,7 @@ begin
    if info.eventkind in [ek_mousemove,ek_mousepark] then begin
     checkrepeater(true);
    end;
-   if not bo1 then begin
+   if not bo1 and isvalidcell(fmousecell) then begin
     cellmouseevent(fmousecell,info);
    end;
   end
@@ -11727,6 +11734,7 @@ begin     //focuscell
    endnonullcheck;
   end;
  end;
+ factiverow:= ffocusedcell.row;
  afterfocuscell(cellbefore,selectaction); 
  flastcol:= ffocusedcell.col;
  result:= true;
@@ -14547,6 +14555,11 @@ begin
  ffixrows.synctofontheight;
 end;
 
+function tcustomgrid.internaldragevent(var info: draginfoty): boolean;
+begin
+ result:= false;
+end;
+
 procedure tcustomgrid.dragevent(var info: draginfoty);
 var
  bo1,bo2: boolean;
@@ -14559,11 +14572,15 @@ begin
    bo1:= false;
    datacols[cell1.col].beforedragevent(info,cell1.row,bo1);
    if not bo1 then begin
-    inherited;
+    if not internaldragevent(info) then begin
+     inherited;
+    end;
    end;
   end
   else begin
-   inherited;
+   if not internaldragevent(info) then begin
+    inherited;
+   end;
   end;
  end;
  if not fdragcontroller.afterdragevent(info) then begin
@@ -14576,7 +14593,8 @@ end;
 
 function tcustomgrid.getdisprect: rectty;
 begin
- if (ffocusedcell.row = invalidaxis) and (ffocusedcell.col = invalidaxis) then begin
+ if (ffocusedcell.row = invalidaxis) and 
+                              (ffocusedcell.col = invalidaxis) then begin
   result:= inherited getdisprect;
  end
  else begin
@@ -15535,12 +15553,13 @@ begin
  end;
 end;
 
-procedure tcustomgrid.appinsrow(aindex: integer;
-                                       const auserinput: boolean = false);
+function tcustomgrid.appinsrow(aindex: integer;
+                                   const auserinput: boolean = false): int32;
 var
  int1,int2: integer;
  bo1: boolean;
 begin
+ result:= invalidaxis;
  if docheckcellvalue and container.canclose(window.focusedwidget) then begin
                          //for not null check in twidgetgrid
   int1:= ffocusedcell.row;
@@ -15575,6 +15594,7 @@ begin
   if ffocusedcell.row = aindex then begin
    fstate1:= fstate1 + [gs1_rowsortinvalid,gs1_rowinserted];
   end;
+  result:= aindex;
  end;
 end;
 
@@ -16398,7 +16418,7 @@ begin
  end;
 end;
 
-procedure tcustomstringgrid.rootchanged(const awidgetregionivalid: boolean);
+procedure tcustomstringgrid.rootchanged(const aflags: rootchangeflagsty);
 begin
  inherited;
  feditor.poschanged;

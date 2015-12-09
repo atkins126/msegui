@@ -1,4 +1,4 @@
-{ MSEgui Copyright (c) 1999-2014 by Martin Schreiber
+{ MSEgui Copyright (c) 1999-2015 by Martin Schreiber
 
     See the file COPYING.MSE, included in this distribution,
     for details about the copyright.
@@ -2008,6 +2008,7 @@ var
  bufferbmp: hbitmap;
  rect1: rectty;
  nomaskblt: boolean;
+ maskpos: pointty;
 
  procedure setintpolmode(const ahandle: hdc);
  var
@@ -2052,13 +2053,20 @@ var
     maskbmp:= 0;
    end;
    stretchedbmp:= createcompatiblebitmap(tcanvas1(source).fdrawinfo.gc.handle,
-                                                              rect1.cx,rect1.cy);
+                                                            rect1.cx,rect1.cy);
    destdc:= createcompatibledc(0);
    setintpolmode(destdc);
    if mask <> nil then begin
     selectobject(destdc,maskbmp);
-    stretchblt(destdc,po1.x,po1.y,destrect^.cx,destrect^.cy,smaskdc,
-                   x,y,cx,cy,rasterops3[rop_copy]);
+    if al_nomaskscale in alignment then begin
+     stretchblt(destdc,po1.x,po1.y,destrect^.cx,destrect^.cy,smaskdc,
+                   maskpos.x,maskpos.y,destrect^.cx,destrect^.cy,
+                                                  rasterops3[rop_copy]);
+    end
+    else begin
+     stretchblt(destdc,po1.x,po1.y,destrect^.cx,destrect^.cy,smaskdc,
+                   maskpos.x,maskpos.y,cx,cy,rasterops3[rop_copy]);
+    end;
    end;
    selectobject(destdc,stretchedbmp);
    stretchblt(destdc,po1.x,po1.y,destrect^.cx,destrect^.cy,
@@ -2101,12 +2109,14 @@ var
       win95maskblt(handle,destrect^.x,destrect^.y,cx,cy,
                     tcanvas1(source).fdrawinfo.gc.handle,
                     x,y,tsimplebitmap1(mask).fhandle,
-                    tcanvas1(mask.canvas).fdrawinfo.gc.handle,x,y,copymode);
+                    tcanvas1(mask.canvas).fdrawinfo.gc.handle,
+                    maskpos.x,maskpos.y,copymode);
      end
      else begin
       maskblt(handle,destrect^.x,destrect^.y,cx,cy,
                     tcanvas1(source).fdrawinfo.gc.handle,
-                    x,y,tsimplebitmap1(mask).handle,x,y,
+                    x,y,tsimplebitmap1(mask).handle,
+                    maskpos.x,maskpos.y,
                     makerop4(rasterops3[rop_nop],rasterops3[copymode]));
      end;
      if double then begin
@@ -2115,13 +2125,13 @@ var
       if nomaskblt then begin
        win95maskblt(handle,destrect^.x,destrect^.y,cx,cy,
                     tcanvas1(source).fdrawinfo.gc.handle,
-                    x,y,tsimplebitmap1(mask).fhandle,
+                    maskpos.x,maskpos.y,tsimplebitmap1(mask).fhandle,
                     tcanvas1(mask.canvas).fdrawinfo.gc.handle,x,y,rop_or);
       end
       else begin
        maskblt(handle,destrect^.x,destrect^.y,cx,cy,
                     tcanvas1(source).fdrawinfo.gc.handle,
-                    x,y,tsimplebitmap1(mask).fhandle,x,y,
+                    maskpos.x,maskpos.y,tsimplebitmap1(mask).fhandle,x,y,
                     makerop4(rasterops3[rop_nop],rasterops3[rop_or]));
       end;
      end;
@@ -2148,7 +2158,8 @@ var
      end
      else begin
       maskblt(handle,rect1.x,rect1.y,rect1.cx,rect1.cy,destdc,
-                    0,0,maskbmp,0,0,makerop4(rasterops3[rop_nop],rasterops3[copymode]));
+                    0,0,maskbmp,0,0,makerop4(rasterops3[rop_nop],
+                                                      rasterops3[copymode]));
      end;
      if double then begin
       setbkcolor(handle,$000000);
@@ -2159,7 +2170,8 @@ var
       end
       else begin
        maskblt(handle,rect1.x,rect1.y,rect1.cx,rect1.cy,destdc,
-                    0,0,maskbmp,0,0,makerop4(rasterops3[rop_nop],rasterops3[rop_or]));
+                    0,0,maskbmp,0,0,makerop4(rasterops3[rop_nop],
+                                                      rasterops3[rop_or]));
       end;
      end;
      deletestretchedbmps;
@@ -2187,8 +2199,9 @@ var
  sourceposbefore: pointty;
  pm,ps,pd,pe,po1: pointer;
  scanstep: integer;
- by1,by2: byte;
- wo1: word;
+// by1,by2: byte;
+ wo1{,wo2}: word;
+ ca1,ca2: card32;
  lwo1: longword;
  pint1: ptrint;
 begin
@@ -2202,6 +2215,7 @@ begin
   nomaskblt:= iswin95 or (kind = gck_printer);
   setintpolmode(handle);
   maskbefore:= mask;
+  maskpos:= addpoint(sourcerect^.pos,maskshift);
   if (mask <> nil) and (mask.kind <> bmk_mono) then begin
    colormask:= tsimplebitmap1(mask);
    mask:= nil;
@@ -2373,29 +2387,43 @@ begin
     colormaskdc:= createcompatibledc(0);
     setintpolmode(colormaskdc);
     deleteobject(selectobject(colormaskdc,colormaskbmp));
-    with sourcerect^ do begin
-     stretchblt(colormaskdc,destrect^.x,destrect^.y,destrect^.cx,destrect^.cy,
-      tcanvas1(colormask.canvas).fdrawinfo.gc.handle,x,y,cx,cy,
-                                  rasterops3[rop_copy]);
+    if al_nomaskscale in alignment then begin
+     with destrect^ do begin
+      stretchblt(colormaskdc,x,y,cx,cy,
+       tcanvas1(colormask.canvas).fdrawinfo.gc.handle,
+           maskpos.x,maskpos.y,cx,cy,
+                                   rasterops3[rop_copy]);
+     end;
+    end
+    else begin
+     with sourcerect^ do begin
+      stretchblt(colormaskdc,destrect^.x,destrect^.y,destrect^.cx,destrect^.cy,
+       tcanvas1(colormask.canvas).fdrawinfo.gc.handle,
+           maskpos.x,maskpos.y,cx,cy,
+                                   rasterops3[rop_copy]);
+     end;
     end;
     gui_pixmaptoimage(colormaskbmp,colormaskimage,colormaskdc);
     pm:= colormaskimage.pixels;
     case colormaskimage.kind of
      bmk_gray: begin
+      rs:= ((word(opacity.red)+word(opacity.green)+word(opacity.blue))*257) div
+                                                                      (3*255);
+                                                         //-> 0..256
       case destimage.kind of
        bmk_gray: begin
         for int1:= 0 to destimage.size.cy - 1 do begin
          po1:= pd;
          ps:= po1 + pint1;
          pe:= po1 + destimage.size.cx;
-         repeat
-          by1:= pbyte(pm)^;
-          by2:= 255-by1;
-          pbyte(po1)^:= (pbyte(po1)^*by2 + pbyte(ps)^*by1) div byte(255);
+         while po1 < pe do begin
+          ca1:= pbyte(pm)^*rs;
+          ca2:= 256*256-ca1;
+          pbyte(po1)^:= (pbyte(po1)^*ca2 + pbyte(ps)^*ca1) div (256*256);
           inc(po1);
           inc(ps);
           inc(pm);
-         until po1 >= pe;
+         end;
          pd:= pd + destimage.linebytes;
         end;
        end;
@@ -2404,12 +2432,12 @@ begin
          po1:= pm;
          pe:= po1 + colormaskimage.size.cx;
          repeat
-          by1:= pbyte(po1)^;
-          by2:= 255-by1;
+          ca1:= pbyte(po1)^*rs;
+          ca2:= 256*256-ca1;
           with prgbtriplety(pd)^ do begin
-           red:=   (by2 * red + by1*prgbtriplety(ps)^.red) div byte(255);
-           green:=   (by2 * green + by1*prgbtriplety(ps)^.green) div byte(255);
-           blue:=   (by2 * blue + by1*prgbtriplety(ps)^.blue) div byte(255);
+           red:= (ca2*red + ca1*prgbtriplety(ps)^.red) div (256*256);
+           green:= (ca2*green + ca1*prgbtriplety(ps)^.green) div (256*256);
+           blue:= (ca2*blue + ca1*prgbtriplety(ps)^.blue) div (256*256);
           end;
           inc(po1);
           inc(ps,4);
@@ -2423,16 +2451,19 @@ begin
      else begin //bmk_rgb
       case destimage.kind of
        bmk_gray: begin
+        rs:= ((word(opacity.red)+word(opacity.green)+
+                              word(opacity.blue))*257) div (3*255);
+                                                      //->0..256
         for int1:= 0 to destimage.size.cy - 1 do begin
          po1:= pd;
          ps:= po1 + pint1;
          pe:= po1 + destimage.size.cx;
          repeat
           with prgbtriplety(pm)^ do begin
-           by1:= (word(red)+word(green)+word(blue)) div 3;
+           ca1:= (rs*(word(red)+word(green)+word(blue)));
           end;
-          by2:= 255-by1;
-          pbyte(po1)^:= (pbyte(po1)^*by2 + pbyte(ps)^*by1) div byte(255);
+          ca2:= 3*256*256-ca1;
+          pbyte(po1)^:= (pbyte(po1)^*ca2 + pbyte(ps)^*ca1) div (3*256*256);
           inc(po1);
           inc(ps);
           inc(pm,4);
@@ -2441,12 +2472,35 @@ begin
         end;
        end;
        else begin   //bmk_rgb
+        rs:= (word(opacity.red)*257) div (255); //->0..256
+        gs:= (word(opacity.green)*257) div (255); //->0..256
+        bs:= (word(opacity.blue)*257) div (255); //->0..256
+        po1:= pd;
+        ps:= po1+pint1;
+        pe:= po1+destimage.length*4;
+        while po1 < pe do begin
+         with prgbtriplety(po1)^ do begin
+          ca1:= prgbtriplety(pm)^.red*rs;
+          red:= (prgbtriplety(po1)^.red*(256*256-ca1)+
+                            (prgbtriplety(ps)^.red*ca1)) div (256*256);
+          ca1:= prgbtriplety(pm)^.green*gs;
+          green:= (prgbtriplety(po1)^.green*(256*256-ca1)+
+                            (prgbtriplety(ps)^.green*ca1)) div (256*256);
+          ca1:= prgbtriplety(pm)^.blue*bs;
+          blue:= (prgbtriplety(po1)^.blue*(256*256-ca1)+
+                            (prgbtriplety(ps)^.blue*ca1)) div (256*256);
+         end;
+         inc(po1,4);
+         inc(ps,4);
+         inc(pm,4);
+        end;
+       {
         for int1:= 0 to destimage.length - 1 do begin
          with rgbtriplety(destimage.pixels[int1]) do begin
-          red:=   (byte(255 - 
+          red:=   (byte(256 - 
                    rgbtriplety(colormaskimage.pixels^[int1]).red) * red +
                    rgbtriplety(colormaskimage.pixels^[int1]).red *
-                   rgbtriplety(sourceimage.pixels^[int1]).red) div byte(255);
+                   rgbtriplety(sourceimage.pixels^[int1]).red) div 256);
           green:= (byte(255 - 
                    rgbtriplety(colormaskimage.pixels^[int1]).green) * green +
                    rgbtriplety(colormaskimage.pixels^[int1]).green *
@@ -2457,6 +2511,7 @@ begin
                    rgbtriplety(sourceimage.pixels^[int1]).blue) div byte(255);
          end;
         end;
+       }
        end;
       end;
      end;
@@ -2965,8 +3020,8 @@ label                        //todo: kerning?
  endlab;
 var
  int1,int2: integer;
- po1: pmsechar;
- po2: {$ifdef FPC}objpas.{$endif}pinteger;
+ po1,pe: pmsechar;
+ po2,pde: {$ifdef FPC}objpas.{$endif}pinteger;
  wo1: word;
  widths: pcharwidthsty;
  overha: integer;
@@ -3010,6 +3065,28 @@ begin
       int2:= int2 + po2^;
       po2^:= int2 shr highresfontshift;
       int2:= int2 and highresfontmask;
+      inc(po2);
+     end;
+    end;
+    int1:= count - gcpresults.nglyphs;
+    if int1 > 0 then begin //has surrogate pairs, 
+                         //insert dummy 0's for low pair part
+                         //not tested!
+     po1:= text;
+     pe:= text + count;
+     po2:= resultpo;
+     pde:= po2 + count;
+     while (po1 < pe) and (int1 > 0) do begin
+      if card16(po1^) and $fc00 = $d800 then begin
+       inc(po1);
+       if card16(po1^) and $fc00 = $dc00 then begin
+        inc(po2);
+        move(po2^,(po2+1)^,((pde-po2)-int1)*sizeof(po2^));
+        po2^:= 0;
+        dec(int1);
+       end;
+      end;
+      inc(po1);
       inc(po2);
      end;
     end;

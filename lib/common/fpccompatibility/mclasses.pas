@@ -453,6 +453,9 @@ type
     procedure SkipValue; override;
   end;
 
+  enumerroreventty = procedure (const reader: treader;
+                    const atype: ptypeinfo; const aenumname: string;
+                                            var avalue: longword) of object;
   seterroreventty = procedure (const reader: treader;
                     const atype: ptypeinfo; const aitemname: string;
                                             var avalue: integer) of object;
@@ -476,6 +479,7 @@ type
     FCanHandleExcepts: Boolean;
     FOnReadStringProperty:TReadWriteStringPropertyEvent;
     fonseterror: seterroreventty;
+   fonenumerror: enumerroreventty;
     procedure DoFixupReferences;
     function FindComponentClass(const AClassName: string): TComponentClass;
   protected
@@ -558,6 +562,7 @@ type
                         read FOnFindComponentClass write FOnFindComponentClass;
     property OnReadStringProperty: TReadWriteStringPropertyEvent 
                         read FOnReadStringProperty write FOnReadStringProperty;
+    property onenumerror: enumerroreventty read fonenumerror write fonenumerror;
     property onseterror: seterroreventty read fonseterror write fonseterror;
   end;
 
@@ -6512,10 +6517,17 @@ begin
       SetOrdProp(Instance, PropInfo, Ord(ReadWideChar));
     tkEnumeration:
       begin
-        Value := GetEnumValue(PropType, ReadIdent);
-        if Value = -1 then
-          raise EReadError.Create(SInvalidPropertyValue);
-        SetOrdProp(Instance, PropInfo, Value);
+       ident:= ReadIdent;
+       Value := GetEnumValue(PropType, ident);
+       if Value = -1 then begin
+        if assigned(fonenumerror) then begin
+         fonenumerror(self,proptype,ident,value);
+        end;
+       end;
+       if Value = -1 then begin        
+        raise EReadError.Create(SInvalidPropertyValue);
+       end;
+       SetOrdProp(Instance, PropInfo, Value);
       end;
 {$ifndef FPUNONE}
     tkFloat:
@@ -6931,8 +6943,16 @@ begin
 end;
 
 function treader.readenum(const enumtype: ptypeinfo): longword;
+var
+ str1: string;
 begin
- result:= GetEnumValue(enumtype, ReadIdent);
+ str1:= ReadIdent;
+ result:= GetEnumValue(enumtype, str1);
+ if integer(result) = -1 then begin
+  if assigned(fonenumerror) then begin
+   fonenumerror(self,enumtype,str1,result);
+  end;
+ end;
  if integer(result) = -1 then begin
   raise EReadError.Create(SInvalidPropertyValue);
  end;

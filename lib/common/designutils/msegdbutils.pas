@@ -329,6 +329,7 @@ type
    fafterconnect: filenamety;
    fxtermcommand: filenamety;
    fcurrentlanguage: languagety;
+   ffpcworkaround: boolean;
    procedure setstoponexception(const avalue: boolean);
    procedure checkactive;
    function checkconnection(const proginfo: boolean): gdbresultty;
@@ -407,6 +408,7 @@ type
    function getbreakpointinfo(var atup: resultinfoty;
                      var info: breakpointinfoty; const full: boolean): boolean;
    procedure updatepascalexpression(var aexpression: string);
+   procedure updatecurrentlanguage();
   public
    constructor create(aowner: tcomponent); override;
    destructor destroy; override;
@@ -667,6 +669,8 @@ type
                    //${PTSN} expands to tty pts number
                    //${PTSH} expands to tty pts handle
    {$warnings on}
+   property fpcworkaround: boolean read ffpcworkaround write
+                                           ffpcworkaround default false;
  end;
 
 procedure localizetext;
@@ -4621,12 +4625,20 @@ end;
 
 function tgdbmi.selectstackframe(const aframe: integer): gdbresultty;
 begin
- result:= synccommand('-stack-select-frame '+inttostr(aframe));
+// result:= synccommand('-stack-select-frame '+inttostr(aframe)); does not
+// switch info source
+ result:= synccommand('frame '+inttostr(aframe)); //switches info source
+ if result = gdb_ok then begin
+  updatecurrentlanguage();
+ end;
 end;
 
 function tgdbmi.selectstackpointer(const aframe: qword): gdbresultty;
 begin
  result:= synccommand('frame '+qwordtocstr(aframe));
+ if result = gdb_ok then begin
+  updatecurrentlanguage();
+ end;
 end;
 
 function tgdbmi.started: boolean;
@@ -4701,11 +4713,20 @@ procedure tgdbmi.updatepascalexpression(var aexpression: string);
 begin
  if (fcurrentlanguage = lan_pascal) and (pos('$',aexpression) = 0) then begin
                                          //no register name
+  if ffpcworkaround then begin
 //  if not startsstr('self.',aexpression) and (aexpression <> 'self') then begin
    aexpression:= uppercase(aexpression); 
            //workaround for gdb bug with class fields
 //  end;
+  end;
  end;
+end;
+
+procedure tgdbmi.updatecurrentlanguage();
+var
+ fna1: filenamety;
+begin
+ getsourcename(fna1,fcurrentlanguage);
 end;
 
 {$ifdef UNIX}

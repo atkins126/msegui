@@ -3,7 +3,7 @@ object mainfo: tmainfo
   frame.localprops = []
   frame.localprops1 = []
   frame.grip_size = 10
-  frame.grip_options = [go_fixsizebutton, go_topbutton, go_backgroundbutton, go_lockbutton]
+  frame.grip_options = [go_fixsizebutton, go_floatbutton, go_topbutton, go_backgroundbutton, go_lockbutton, go_nolockbutton]
   visible = False
   bounds_x = 45
   bounds_y = 165
@@ -25,7 +25,7 @@ object mainfo: tmainfo
     449
     133
   )
-  dragdock.optionsdock = [od_savepos, od_savezorder, od_canmove, od_cansize, od_canfloat, od_candock]
+  dragdock.optionsdock = [od_savepos, od_savezorder, od_canmove, od_cansize, od_canfloat, od_candock, od_captionhint]
   optionswindow = [wo_taskbar]
   mainmenu = mainmenu1
   options = [fo_main, fo_terminateonclose, fo_globalshortcuts, fo_savepos, fo_savezorder, fo_savestate]
@@ -48,12 +48,12 @@ object mainfo: tmainfo
     bounds_cx = 449
     bounds_cy = 114
     anchors = [an_top, an_bottom]
-    dragdock.optionsdock = [od_acceptsdock, od_splitvert, od_splithorz, od_tabed, od_proportional, od_background]
+    dragdock.optionsdock = [od_acceptsdock, od_splitvert, od_splithorz, od_tabed, od_proportional, od_background, od_captionhint]
     statfile = projectstatfile
   end
   object statdisp: tstringdisp
     optionswidget = [ow_arrowfocusin, ow_arrowfocusout, ow_destroywidgets]
-    frame.localprops = [frl_frameimageleft, frl_frameimagetop, frl_frameimageright, frl_frameimagebottom, frl_frameimageoffset, frl_frameimageoffsetmouse, frl_frameimageoffsetclicked, frl_frameimageoffsetactive, frl_frameimageoffsetactivemouse, frl_frameimageoffsetactiveclicked]
+    frame.localprops = []
     frame.localprops1 = []
     taborder = 1
     bounds_x = 0
@@ -1465,6 +1465,7 @@ object mainfo: tmainfo
     controller.defaultext = 'prj'
     controller.captionopen = 'Open Project'
     controller.captionsave = 'Save Project'
+    optionsedit1 = [oe1_autopopupmenu, oe1_keyexecute, oe1_savestate, oe1_checkvalueafterstatread]
     left = 264
     top = 1
   end

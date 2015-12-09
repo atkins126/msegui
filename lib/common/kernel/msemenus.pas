@@ -93,8 +93,6 @@ type
    fname: string;
 //   fgroup: integer;
    fsource: imenuitem;
-   ffont: tmenufont;
-   ffontactive: tmenufontactive;
    fcoloractive: colorty;
    fcolorglyphactive: colorty;
    function getsubmenu: tmenuitems;
@@ -173,6 +171,8 @@ type
    finfo: actioninfoty;
    fowner: tcustommenu;
    fsubmenu: tmenuitems;
+   ffont: tmenufont;
+   ffontactive: tmenufontactive;
    procedure updatecaption;
    procedure defineproperties(filer: tfiler); override;
    procedure befexec;
@@ -1577,10 +1577,13 @@ var
 begin
  result:= false;
  if finfo.hint <> '' then begin
+  result:= true;
   item1:= self;
   while item1 <> nil do begin
-   result:= mao_showhint in item1.options;
    if item1.options * [mao_showhint,mao_noshowhint] <> []then begin
+    if mao_noshowhint in item1.options then begin
+     result:= false;
+    end;
     break;
    end;
    item1:= item1.fparentmenu;

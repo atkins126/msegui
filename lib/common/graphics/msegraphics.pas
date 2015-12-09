@@ -1,4 +1,4 @@
-{ MSEgui Copyright (c) 1999-2014 by Martin Schreiber
+{ MSEgui Copyright (c) 1999-2015 by Martin Schreiber
 
     See the file COPYING.MSE, included in this distribution,
     for details about the copyright.
@@ -8,9 +8,6 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 }
 unit msegraphics;
-//
-//todo: simplify and optimize multi backend handling
-//
 
 {$ifdef FPC}{$mode objfpc}{$h+}{$GOTO ON}{$interfaces corba}{$endif}
 
@@ -301,7 +298,7 @@ type
   resultpo: pinteger;
  end;
  getfontmetricsinfoty = record
-  char: msechar;
+  char: ucs4char;
   fontdata: pfontdataty;
   resultpo: pfontmetricsty;
  end;
@@ -314,6 +311,7 @@ type
   copymode: rasteropty;
   transparentcolor: pixelty;
   mask: tsimplebitmap;
+  maskshiftscaled,maskshift: pointty;
   opacity: rgbtriplety;
  end;
  fonthasglyphinfoty = record
@@ -922,7 +920,7 @@ type
    procedure internalcopyarea(asource: tcanvas; const asourcerect: rectty;
               const adestrect: rectty; acopymode: rasteropty;
               atransparentcolor: colorty;
-              amask: tsimplebitmap;
+              amask: tsimplebitmap; const amaskpos: pointty;
               const aalignment: alignmentsty; 
               //only al_stretchx, al_stretchy and al_tiled used
               const atileorigin: pointty;
@@ -1115,6 +1113,8 @@ type
    function getstringwidth(const atext: pmsechar; const acount: integer;
                                  const afont: tfont = nil): integer; overload;
                   //sum of cellwidths
+   function getfontmetrics(const achar: ucs4char;
+                                     const afont: tfont = nil): fontmetricsty;
    function getfontmetrics(const achar: msechar;
                                      const afont: tfont = nil): fontmetricsty;
 
@@ -1244,7 +1244,7 @@ type
    procedure createhandle(acopyfrom: pixmapty); virtual;
    procedure setkind(const avalue: bitmapkindty); virtual;
    function getconverttomonochromecolorbackground: colorty; virtual;
-   function getmask: tsimplebitmap; virtual;
+   function getmask(out apos: pointty): tsimplebitmap; virtual;
    procedure setsize(const avalue: sizety); virtual;
    function normalizeinitcolor(const acolor: colorty): colorty;
    procedure assign1(const source: tsimplebitmap; const docopy: boolean); virtual;
@@ -1384,6 +1384,8 @@ function graytopixel(color: colorty): pixelty;
 function rgbtocolor(const red,green,blue: integer): colorty;
 function blendcolor(const weight: real; const a,b: colorty): colorty;
                        //0..1
+function opacitycolor(const opacity: real): colorty;
+function invertcolor(const color: colorty): colorty;
 
 procedure setcolormapvalue(index: colorty; const red,green,blue: integer); overload;
                     //RGB values 0..255
@@ -1418,7 +1420,6 @@ type
 
 var
  gdilockcount: integer;
-// gdilocked: boolean;
  
 {$ifdef mse_debuggdisync}
 procedure gdilockerror(const text: msestring);
@@ -1621,11 +1622,11 @@ end;
 procedure gdi_call(const func: gdifuncty; var drawinfo: drawinfoty;
                                  gdi: pgdifunctionaty = nil);
 
-procedure doflush();
-begin
- gdi^[gdf_flush](drawinfo);
- gui_flushgdi();
-end;
+ procedure doflush();
+ begin
+  gdi^[gdf_flush](drawinfo);
+  gui_flushgdi();
+ end; //doflush
 
 begin
  if gdi = nil then begin
@@ -1871,6 +1872,26 @@ begin
  rgbtriplety(result).green:= ca.green + round((cb.green - ca.green)*weight);
  rgbtriplety(result).blue:= ca.blue + round((cb.blue - ca.blue)*weight);
  rgbtriplety(result).res:= 0;
+end;
+
+function opacitycolor(const opacity: real): colorty;
+begin
+ with rgbtriplety(result) do begin
+  red:= round(255 * opacity);
+  green:= red;
+  blue:= red;
+  res:= 0;
+ end;
+end;
+
+function invertcolor(const color: colorty): colorty;
+begin
+ rgbtriplety(result):= colortorgb(color);
+ with rgbtriplety(result) do begin
+  red:= 255-red;
+  green:= 255-green;
+  blue:= 255-blue;
+ end;
 end;
 
 function initcolormap: boolean;
@@ -2433,6 +2454,7 @@ procedure tsimplebitmap.copyarea(const asource: tsimplebitmap;
 var
  bo1,bo2: boolean;
  amask: tsimplebitmap;
+ maskpos1: pointty;
 begin
  bo1:= canvasallocated;
  bo2:= asource.canvasallocated;
@@ -2458,14 +2480,15 @@ begin
   canvas.colorbackground:= acolorbackground;
  end;
  if masked then begin
-  amask:= asource.getmask;
+  amask:= asource.getmask(maskpos1);
  end
  else begin
   amask:= nil;
+  maskpos1:= nullpoint;
  end;
  canvas.internalcopyarea(asource.canvas,asourcerect,
                 calcrectalignment(adestrect,asourcerect,aalignment),acopymode,
-                         cl_default,amask,aalignment,nullpoint,aopacity);
+                       cl_default,amask,maskpos1,aalignment,nullpoint,aopacity);
  if bo1 then begin
   canvas.restore;
  end
@@ -2565,7 +2588,7 @@ begin
 end;
 }
 
-function tsimplebitmap.getmask: tsimplebitmap;
+function tsimplebitmap.getmask(out apos: pointty): tsimplebitmap;
 begin
  result:= nil; //dummy
 end;
@@ -3815,6 +3838,7 @@ begin
  if (event = oe_changed) and (ftemplate <> nil) and 
                                      (ftemplate = sender) then begin
   settemplateinfo(tfontcomp(sender).template.fi);
+  dochanged([],false);
  end;
 end;
 
@@ -4473,7 +4497,8 @@ end;
 procedure tcanvas.internalcopyarea(asource: tcanvas; const asourcerect: rectty;
                            const adestrect: rectty; acopymode: rasteropty;
                            atransparentcolor: colorty;
-                           amask: tsimplebitmap{pixmapty;  amaskgchandle: ptruint};
+                           amask: tsimplebitmap;
+                           const amaskpos: pointty;
                            const aalignment: alignmentsty;
                            const atileorigin: pointty;
                            const aopacity: colorty); //cl_none -> opaque
@@ -4491,7 +4516,31 @@ var
  int1{,int2}: integer;
 // bo1,bo2: boolean;
 
+ function checkmaskrect(var arect,brect: rectty): boolean;
+ var
+  rect2: rectty;
+ begin
+  rect2:= intersectrect(arect,mr(amaskpos,amask.size));
+  if (rect2.cx < arect.cx) or (rect2.cy < arect.cy) then begin 
+                                                 //mask not big enough
+   if (rect2.cx <= 0) or (rect2.cy <= 0) then begin
+    result:= true;
+    exit;
+   end;
+   brect.x:= brect.x + (rect2.x - arect.x) * brect.cx div arect.cx;
+   brect.y:= brect.y + (rect2.y - arect.y) * brect.cy div arect.cy;
+   brect.cx:= (brect.cx * rect2.cx) div arect.cx;
+   brect.cy:= (brect.cy * rect2.cy) div arect.cy;
+   arect:= rect2;
+  end;
+  result:= false;
+ end;
+
 begin
+ if (asourcerect.cx = 0) or (asourcerect.cy = 0) or 
+    (adestrect.cx = 0) or (adestrect.cy = 0) then begin //no div 0
+  exit;
+ end;
  checkgcstate([]);  //gc must be valid
  if asource <> self then begin
   asource.checkgcstate([cs_gc]); //gc must be valid
@@ -4527,6 +4576,18 @@ begin
   srect.size:= asourcerect.size;
   drect.pos:= dpoint;
  end;
+ if amask <> nil then begin
+  if al_nomaskscale in aalignment then begin
+   if checkmaskrect(drect,srect) then begin
+    exit;
+   end;
+  end
+  else begin
+   if checkmaskrect(srect,drect) then begin
+    exit;
+   end;
+  end;
+ end;
  with fdrawinfo,copyarea do begin
   source:= asource;
   sourcerect:= @srect;
@@ -4534,11 +4595,11 @@ begin
   alignment:= aalignment;
   copymode:= acopymode;
   mask:= amask;
+  if (srect.cx = 0) or (srect.cy = 0) then begin
+   exit;
+  end;
   if al_fit in aalignment then begin
    alignment:= alignment + [al_stretchx,al_stretchy];
-   if (srect.cx = 0) or (srect.cy = 0) then begin
-    exit;
-   end;
    if srect.cy * drect.cx > srect.cx * drect.cy then begin //fit vert
     drect.cx:= (srect.cx * drect.cy) div srect.cy;
     int1:= adestrect.cx - drect.cx;
@@ -4564,6 +4625,10 @@ begin
     end;
    end;
   end;
+  maskshift.x:=  -amaskpos.x;
+  maskshift.y:=  -amaskpos.y;
+  maskshiftscaled.x:= (maskshift.x*drect.cx) div srect.cx;
+  maskshiftscaled.y:= (maskshift.y*drect.cy) div srect.cy;
   if aopacity = cl_none then begin
    longword(opacity):= maxopacity;
   end
@@ -4624,9 +4689,7 @@ begin
    stepx:= srect.cx;
    stepy:= srect.cy;
    endx:= rect1.x + rect1.cx;
-//   endcx:= endx - stepx;
    endy:= rect1.y + rect1.cy;
-//   endcy:= endy - stepy;
    sourcex:= srect.x;
    sourcey:= srect.y;
    if not (al_stretchy in aalignment) then begin
@@ -4647,35 +4710,27 @@ begin
      int1:= 0;
     end;
    end;
-//   bo2:= true;
    repeat
     if not (al_stretchy in aalignment) then begin
      if drect.y + srect.cy > endy then begin
       srect.cy:= endy - drect.y;
      end;
-//     if (drect.y > endcy) and not bo2 then begin
-//      srect.cy:= endy - drect.y;
-//      bo2:= false;
-//     end;
      drect.cy:= srect.cy;
     end;
     drect.x:= startx;
     dec(srect.x,int1);
     dec(drect.x,int1);
     inc(srect.cx,int1);
- //   bo1:= true;
     repeat
      if not (al_stretchx in aalignment) then begin
       if drect.x + srect.cx > endx then begin
        srect.cx:= endx - drect.x;
       end;
-//      if (drect.x > endcx) {and not bo1} then begin
-//       srect.cx:= endx - drect.x;
-//      end;
- //     bo1:= false;
       drect.cx:= srect.cx;
      end;
-     gdi(gdf_copyarea);
+     if (srect.cx > 0) and (srect.cy > 0) then begin
+      gdi(gdf_copyarea);
+     end;
      inc(drect.x,srect.cx);
      srect.cx:= stepx;
      srect.x:= sourcex;
@@ -4703,7 +4758,7 @@ procedure tcanvas.copyarea(const asource: tcanvas; const asourcerect: rectty;
 begin
  if cs_inactive in fstate then exit;
  internalcopyarea(asource,asourcerect,makerect(adestpoint,asourcerect.size),
-              acopymode,atransparentcolor,nil,[],nullpoint,aopacity);
+              acopymode,atransparentcolor,nil,nullpoint,[],nullpoint,aopacity);
 end;
 
 procedure tcanvas.copyarea(const asource: tcanvas; const asourcerect: rectty;
@@ -4716,7 +4771,8 @@ procedure tcanvas.copyarea(const asource: tcanvas; const asourcerect: rectty;
 begin
  if cs_inactive in fstate then exit;
  internalcopyarea(asource,asourcerect,adestrect,
-              acopymode,atransparentcolor,nil,alignment,nullpoint,aopacity);
+              acopymode,atransparentcolor,nil,nullpoint,alignment,
+                                                  nullpoint,aopacity);
 end;
 
 procedure tcanvas.drawpoints(const apoints: array of pointty; const acolor: colorty;
@@ -5405,7 +5461,7 @@ begin
  result:= getstringwidth(pmsechar(atext),length(atext),afont);
 end;
 
-function tcanvas.getfontmetrics(const achar: msechar;
+function tcanvas.getfontmetrics(const achar: ucs4char;
                      const afont: tfont = nil): fontmetricsty;
 var
  afontnum: integer;
@@ -5428,6 +5484,12 @@ begin
  with result do begin
   sum:= width - leftbearing - rightbearing;
  end;
+end;
+
+function tcanvas.getfontmetrics(const achar: msechar;
+                                  const afont: tfont = nil): fontmetricsty;
+begin
+ result:= getfontmetrics(ucs4char(card16(achar)),afont);
 end;
 
 procedure tcanvas.drawframe(const arect: rectty; awidth: integer;

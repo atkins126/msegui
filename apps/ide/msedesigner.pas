@@ -420,6 +420,8 @@ type
 //   procedure doasyncevent(var atag: integer); override;
    procedure readererror(reader: treader; const message: string;
                                  var handled: boolean);
+   procedure readerenumerror(const reader: treader; const atype: ptypeinfo;
+                            const aitemname: string; var avalue: longword);
    procedure readerseterror(const reader: treader; const atype: ptypeinfo;
                             const aitemname: string; var avalue: integer);
    procedure forallmethodproperties(const aroot: tcomponent;
@@ -4567,12 +4569,37 @@ begin
  end;
 end;
 
+procedure tdesigner.readerenumerror(const reader: treader; 
+         const atype: ptypeinfo; const aitemname: string; var avalue: longword);
+begin
+ if atype = typeinfo(charencodingty) then begin
+  if (aitemname = 'ce_utf8n') then begin
+   avalue:= ord(ce_utf8);
+   floadingmodulepo^.readermodified:= true;
+  end;
+ end;
+end;
+
 procedure tdesigner.readerseterror(const reader: treader; 
          const atype: ptypeinfo; const aitemname: string; var avalue: integer);
 begin
  if atype = typeinfo(optioneditty) then begin
   if (aitemname = 'oe_autopopupmenu') or 
             (aitemname = 'oe_keyexecute') then begin
+   avalue:= -2; //skip
+   floadingmodulepo^.readermodified:= true;
+  end;
+ end;
+ if atype = typeinfo(framelocalpropty) then begin
+  if (aitemname = 'frl_frameimageoffsetactivemouse') or 
+            (aitemname = 'frl_frameimageoffsetactiveclicked') then begin
+   avalue:= -2; //skip
+   floadingmodulepo^.readermodified:= true;
+  end;
+ end;
+ if atype = typeinfo(framelocalprop1ty) then begin
+  if (aitemname = 'frl1_framefaceoffsetactivemouse') or 
+            (aitemname = 'frl1_framefaceoffsetactiveclicked') then begin
    avalue:= -2; //skip
    floadingmodulepo^.readermodified:= true;
   end;
@@ -4707,6 +4734,7 @@ begin //loadformfile
          reader.oncreatecomponent:= createcomponent();
          reader.onerror:= {$ifdef FPC}@{$endif}readererror;
          reader.onseterror:= @readerseterror;
+         reader.onenumerror:= @readerenumerror;
          module.Name:= modulename;
          reader.ReadrootComponent(module);
         {$ifndef mse_nomethodswap}

@@ -1,5 +1,30 @@
 MSEide+MSEgui breaking changes version history
 
+2015-11-23
+ twidget.findwidget() -> findchild().
+ twidget.findtagwidget() -> findtagchild().
+
+Version 4.0
+ 2015-11-13
+2015-11-03 tcustomface opacity values of alpha blending inverted, white is
+ full opaqueness of the elements.
+2015-10-27 tcustomframe.frameimage_offsetactivemouse,
+ frameimage_offsetactiveclicked, frameface_offsetactivemouse and
+ frameface_offsetactiveclicked removed. The resulting offset is now the sum
+ of all active offsets.
+2015-10-24
+ tslider.scrollbar.face moved to tcustomscrollbar, 
+ disable tslider.scrollbar.face in order to show the pattern.
+ 
+Version 4.0beta1
+2015-09-30 
+ tfiledialog statvalues lastdir, filehistory, filefilter and fielefilterindext
+  moved to oe1_saveoptions section.
+2015-09-27
+ charencodingty ce_utf8n -> ce_utf8, please load broken forms into MSEide
+  in order to fix the *.mfm files.
+2015-09-15 
+ Internal character encoding is utf-16 instead of UCS2.
 2015-08-09
  applyrecupdateeventty asql parameter is msestring.
 2015-08-08

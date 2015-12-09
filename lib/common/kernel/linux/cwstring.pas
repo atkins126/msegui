@@ -27,7 +27,7 @@ implementation
 
 interface
 uses
- sysutils,msesetlocale,mselibc;
+ sysutils,msesetlocale,mselibc{$ifdef fpcv3},unixcp{$endif};
 type
  eiconv = class(econverterror)
  end;
@@ -76,27 +76,27 @@ function wcscoll (__s1:pwchar_t; __s2:pwchar_t):cint;cdecl;external libiconvname
 function strcoll (__s1:pchar; __s2:pchar):cint;cdecl;external libiconvname name 'strcoll';
 
 const
-{$ifdef linux}
-  __LC_CTYPE = 0;
-  _NL_CTYPE_CLASS = (__LC_CTYPE shl 16);
-  _NL_CTYPE_CODESET_NAME = (_NL_CTYPE_CLASS)+14;
-  CODESET = _NL_CTYPE_CODESET_NAME;
-{$else linux}
-{$ifdef darwin}
-  CODESET = 0;
-{$else darwin}
-{$ifdef FreeBSD} // actually FreeBSD5. internationalisation is afaik not default on 4.
-  CODESET = 0;
-{$else freebsd}
-{$ifdef solaris}
-  CODESET=49;
-{$else}
-{$error lookup the value of CODESET in /usr/include/langinfo.h for your OS }
+//{$ifdef linux}
+//  __LC_CTYPE = 0;
+//  _NL_CTYPE_CLASS = (__LC_CTYPE shl 16);
+//  _NL_CTYPE_CODESET_NAME = (_NL_CTYPE_CLASS)+14;
+//  CODESET = _NL_CTYPE_CODESET_NAME;
+//{$else linux}
+//{$ifdef darwin}
+//  CODESET = 0;
+//{$else darwin}
+//{$ifdef FreeBSD} // actually FreeBSD5. internationalisation is afaik not default on 4.
+//  CODESET = 0;
+//{$else freebsd}
+//{$ifdef solaris}
+//  CODESET=49;
+//{$else}
+//{$error lookup the value of CODESET in /usr/include/langinfo.h for your OS }
 // and while doing it, check if iconv is in libc, and if the symbols are prefixed with iconv_ or libiconv_
-{$endif solaris}
-{$endif FreeBSD}
-{$endif darwin}
-{$endif linux}
+//{$endif solaris}
+//{$endif FreeBSD}
+//{$endif darwin}
+//{$endif linux}
 
 { unicode encoding name }
 {$ifdef FPC_LITTLE_ENDIAN}
@@ -176,6 +176,13 @@ procedure Wide2AnsiMove(source:pwidechar; var dest:ansistring; len:SizeInt);
     mynil : pchar;
     my0 : size_t;
   begin
+{$ifdef fpcv3}
+ if (cp = cp_utf8) or (cp = cp_acp) and 
+                          (DefaultSystemCodePage = cp_utf8) then begin
+  dest:= stringtoutf8(source,len);
+ end
+ else begin
+{$endif}
     mynil:=nil;
     my0:=0;
     { rought estimation }
@@ -225,7 +232,10 @@ procedure Wide2AnsiMove(source:pwidechar; var dest:ansistring; len:SizeInt);
    {$ifdef fpcv3}
     pansirec(pointer(dest)-sizeof(tansirec))^.codepage:= cp;
    {$endif}
-  end;
+{$ifdef fpcv3}
+ end;
+{$endif}
+end;
 
 {$ifdef fpcv3}
 procedure Ansi2WideMove(source:pchar;cp : TSystemCodePage;
@@ -243,6 +253,13 @@ procedure Ansi2WideMove(source:pchar;var dest:widestring;len:SizeInt);
     mynil : pchar;
     my0 : size_t;
   begin
+{$ifdef fpcv3}
+ if (cp = cp_utf8) or (cp = cp_acp) and 
+                          (DefaultSystemCodePage = cp_utf8) then begin
+  dest:= utf8tostring(source,len);
+ end
+ else begin
+{$endif}
     mynil:=nil;
     my0:=0;
     // extra space
@@ -289,7 +306,10 @@ procedure Ansi2WideMove(source:pchar;var dest:widestring;len:SizeInt);
     unlockiconv(lock_ansi2wide);
     // truncate string
     setlength(dest,length(dest)-outleft div 2);
-  end;
+{$ifdef fpcv3}
+ end;
+{$endif}
+end;
 
 
 function LowerWideString(const s : WideString) : WideString;
@@ -554,6 +574,73 @@ function StrCompAnsi(s1,s2 : PChar): PtrInt;
     result:=strcoll(s1,s2);
   end;
 
+{$ifdef fpcv3}
+//copied from fpc rtl
+{$ifdef FPC_HAS_CPSTRING}
+
+function envvarset(const varname: pchar): boolean;
+var
+  varval: pchar;
+begin
+  varval:= getenv(varname);
+  result:=
+    assigned(varval) and
+    (varval[0]<>#0);
+end;
+
+function GetStandardCodePage(
+                      const stdcp: TStandardCodePageEnum): TSystemCodePage;
+var
+  langinfo: pchar;
+begin
+{$ifdef FPCRTL_FILESYSTEM_UTF8}
+  if stdcp=scpFileSystemSingleByte then
+    begin
+      result:=CP_UTF8;
+      exit;
+    end;
+{$endif}
+  { if none of the relevant LC_* environment variables are set, fall back to
+    UTF-8 (this happens under some versions of OS X for GUI applications, which
+    otherwise get CP_ASCII) }
+  if envvarset('LC_ALL') or
+     envvarset('LC_CTYPE') or
+     envvarset('LANG') then
+    begin
+      langinfo:=nl_langinfo(CODESET);
+      { there's a bug in the Mac OS X 10.5 libc (based on FreeBSD's)
+        that causes it to return an empty string of UTF-8 locales
+        -> patch up (and in general, UTF-8 is a good default on
+        Unix platforms) }
+      if not assigned(langinfo) or
+         (langinfo^=#0) then
+        langinfo:='UTF-8';
+      Result:= GetCodepageByName(ansistring(langinfo));
+    end
+  else
+    Result:=unixcp.GetSystemCodepage;
+end;
+
+procedure SetStdIOCodePage(var T: Text); inline;
+begin
+  case TextRec(T).Mode of
+    fmInput:TextRec(T).CodePage:=GetStandardCodePage(scpConsoleInput);
+    fmOutput:TextRec(T).CodePage:=GetStandardCodePage(scpConsoleOutput);
+  end;
+end;
+
+procedure SetStdIOCodePages; inline;
+begin
+  SetStdIOCodePage(system.Input);
+  SetStdIOCodePage(system.Output);
+  SetStdIOCodePage(system.ErrOutput);
+  SetStdIOCodePage(system.StdOut);
+  SetStdIOCodePage(system.StdErr);
+end;
+{$endif FPC_HAS_CPSTRING}
+
+{$endif}
+
 var
 {$ifdef unicodeversion}
   widestringmanagerbefore : TUnicodeStringManager;
@@ -606,6 +693,9 @@ begin
   StrLowerAnsiStringProc
   StrUpperAnsiStringProc
   }
+ {$ifdef fpcv3}
+  GetStandardCodePageProc:=@GetStandardCodePage;
+ {$endif}
  end;
  SetWideStringManager(CWideStringManager);
 end;
@@ -618,11 +708,24 @@ end;
 initialization
  setlocale(LC_ALL,'');
   { init conversion tables }
+  
+{$ifdef fpcv3}
+  { set the DefaultSystemCodePage }
+  DefaultSystemCodePage:=GetStandardCodePage(scpAnsi);
+  DefaultFileSystemCodePage:=GetStandardCodePage(scpFileSystemSingleByte);
+  DefaultRTLFileSystemCodePage:=DefaultFileSystemCodePage;
+
+  {$ifdef FPC_HAS_CPSTRING}
+  SetStdIOCodePages;
+  {$endif FPC_HAS_CPSTRING}
+{$endif}
+
  iconv_wide2ansi:=iconv_open(nl_langinfo(CODESET),unicode_encoding);
  iconv_ansi2wide:=iconv_open(unicode_encoding,nl_langinfo(CODESET));
 // iconv_ucs42ansi:=iconv_open(nl_langinfo(CODESET),'UCS4');
 // iconv_ansi2ucs4:=iconv_open('UCS4',nl_langinfo(CODESET));
  SetCWideStringManager();
+
 finalization
  unSetCWideStringManager();
  if iconv_wide2ansi <> nil then begin

@@ -22,7 +22,7 @@ uses
  mseevent,mseglob,mseguiglob,msestat,msestatfile,
  mseinplaceedit,msegrids,msetypes,mseshapes,msewidgets,
  msedrawtext,classes,mclasses,msereal,mseclasses,msearrayprops,
- msebitmap,msemenus,msetimer,
+ msebitmap,msemenus,msetimer,mseactions,
  msesimplewidgets,msepointer,msestrings,msescrollbar
          {$ifdef mse_with_ifi},mseifiglob{$endif};
 
@@ -73,9 +73,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -83,9 +85,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-
+}
    property colorclient default cl_foreground;
    property caption;
    property captiontextflags;
@@ -135,9 +139,11 @@ type
    property frameimage_offsetmouse;
    property frameimage_offsetclicked;
    property frameimage_offsetactive;
+   property frameimage_offsetfocused;
+{
    property frameimage_offsetactivemouse;
    property frameimage_offsetactiveclicked;
-
+}
    property frameface_list;
    property frameface_offset;
    property frameface_offset1;
@@ -145,9 +151,11 @@ type
    property frameface_offsetmouse;
    property frameface_offsetclicked;
    property frameface_offsetactive;
+   property frameface_offsetfocused;
+{
    property frameface_offsetactivemouse;
    property frameface_offsetactiveclicked;
-   
+}   
    property optionsskin;
 
    property caption;
@@ -215,6 +223,7 @@ type
    fbuttonwidth: integer;
    foptions: framebuttonoptionsty;
    fonexecute: notifyeventty;
+   faction: taction;
    procedure setbuttonwidth(const Value: integer);
    procedure setoptions(const Value: framebuttonoptionsty);
    procedure optionstostate();
@@ -228,12 +237,13 @@ type
    procedure setcolor(const avalue: colorty);
    procedure setcolorglyph(const avalue: colorty);
    procedure setimagelist(const Value: timagelist);
-   procedure setimagenr(const Value: imagenrty);
+   procedure setimagenr(const avalue: imagenrty);
+   procedure setimagenrdisabled(const avalue: imagenrty);
    function getface: tface;
    procedure setface(const avalue: tface);
    function getframe: tframe;
    procedure setframe(const avalue: tframe);
-   //iframe
+    //iframe
    procedure setframeinstance(instance: tcustomframe);
    procedure setstaticframe(value: boolean);
    function getstaticframe: boolean;
@@ -249,6 +259,7 @@ type
    function getwidget: twidget;
    function getframestateflags: framestateflagsty; virtual;
    function getimagelist: timagelist;
+   procedure setaction(const avalue: taction);
   protected
    fframerect: rectty;
    finfo: shapeinfoty;
@@ -276,10 +287,15 @@ type
    property face: tface read getface write setface;
    property frame: tframe read getframe write setframe;
    property imagelist: timagelist read finfo.ca.imagelist write setimagelist;
-   property imagenr: imagenrty read finfo.ca.imagenr write setimagenr default -1;
+   property imagenr: imagenrty read finfo.ca.imagenr write setimagenr 
+                                                                  default -1;
+   property imagenrdisabled: imagenrty read finfo.imagenrdisabled 
+                                 write setimagenrdisabled default -2; //grayed
    property options: framebuttonoptionsty read foptions write setoptions
                                             default [];
+   property action: taction read faction write setaction;
    property onexecute: notifyeventty read fonexecute write fonexecute;
+                                //executed after action execute
  end;
 
  tstockglyphframebutton = class(tframebutton)
@@ -429,9 +445,9 @@ type
    procedure paintimage(const canvas: tcanvas); virtual;
    function needsfocuspaint: boolean; override;
 //   procedure doafterpaint(const canvas: tcanvas); override;
-   procedure rootchanged(const awidgetregionivalid: boolean); override;
+   procedure rootchanged(const aflags: rootchangeflagsty); override;
    function gettextcliprect(): rectty; virtual;
-   procedure showhint(var info: hintinfoty); override;
+   procedure showhint(const aid: int32; var info: hintinfoty); override;
 
    procedure dochange; virtual;
    procedure internaltextedited(const aevent: texteditedeventty);
@@ -613,6 +629,7 @@ end;
 destructor tframebutton.destroy;
 begin
  inherited;
+ action:= nil; //remove link
  finfo.face.free;
  fframe.free;
 end;
@@ -727,7 +744,7 @@ procedure tframebutton.mouseevent(var info: mouseeventinfoty;
      const intf: iframe; const buttonintf: ibutton; const index: integer);
 var
  bo1: boolean;
- action: buttonactionty;
+ action1: buttonactionty;
 begin
  with finfo do begin
   bo1:= shs_clicked in state;
@@ -736,21 +753,26 @@ begin
   end;
   if shs_clicked in state then begin
    if not bo1 then begin
-    action:= ba_buttonpress;
-    buttonintf.buttonaction(action,index);
+    action1:= ba_buttonpress;
+    buttonintf.buttonaction(action1,index);
    end;
   end
   else begin
    if bo1 then begin
-    action:= ba_buttonrelease;
-    buttonintf.buttonaction(action,index);
+    action1:= ba_buttonrelease;
+    buttonintf.buttonaction(action1,index);
    end;
   end;
   if bo1 and (info.eventkind = ek_buttonrelease) then begin
-   action:= ba_click;
-   buttonintf.buttonaction(action,index);
-   if assigned(fonexecute) and (action = ba_click) then begin
-    fonexecute(self);
+   action1:= ba_click;
+   buttonintf.buttonaction(action1,index);
+   if action1 = ba_click then begin
+    if faction <> nil then begin
+     faction.execute();
+    end;
+    if assigned(fonexecute) then begin
+     fonexecute(self);
+    end;
    end;
   end;
  end;
@@ -762,13 +784,22 @@ begin
  changed;
 end;
 
-procedure tframebutton.setimagenr(const Value: imagenrty);
+procedure tframebutton.setimagenr(const avalue: imagenrty);
 begin
- if finfo.ca.imagenr <> value then begin
-  finfo.ca.imagenr := Value;
+ if finfo.ca.imagenr <> avalue then begin
+  finfo.ca.imagenr := avalue;
   changed;
  end;
 end;
+
+procedure tframebutton.setimagenrdisabled(const avalue: imagenrty);
+begin
+ if finfo.imagenrdisabled <> avalue then begin
+  finfo.imagenrdisabled := avalue;
+  changed;
+ end;
+end;
+
 
 procedure tframebutton.createface;
 begin
@@ -914,8 +945,8 @@ end;
 
 function tframebutton.getframestateflags: framestateflagsty;
 begin
- with finfo do begin
-  result:= combineframestateflags(shs_disabled in state,getwidget.active,
+ with getwidget,finfo do begin
+  result:= combineframestateflags(shs_disabled in state,focused,active,
              shs_mouse in state,shs_clicked in state);
  end;
 end;
@@ -923,6 +954,12 @@ end;
 function tframebutton.getimagelist: timagelist;
 begin
  result:= finfo.ca.imagelist;
+end;
+
+procedure tframebutton.setaction(const avalue: taction);
+begin
+ twidget1(iframe(tcustombuttonsframe(fowner).fintf).getwidget).
+                          setlinkedvar(avalue,tmsecomponent(faction));
 end;
 
 { tstockglyphframebutton}
@@ -1021,6 +1058,7 @@ begin
    end;
   end;
  end;
+ updatewidgetstate(); //restore disabled state
 end;
 
 procedure tframebuttons.checkcount(var acount: integer);
@@ -1704,7 +1742,7 @@ begin
  feditor.dofocus;
 end;
 
-procedure tcustomedit.rootchanged(const awidgetregionivalid: boolean);
+procedure tcustomedit.rootchanged(const aflags: rootchangeflagsty);
 begin
  inherited;
  feditor.poschanged;
@@ -1813,7 +1851,7 @@ begin
  result:= clippedpaintrect();
 end;
 
-procedure tcustomedit.showhint(var info: hintinfoty);
+procedure tcustomedit.showhint(const aid: int32; var info: hintinfoty);
 begin
  if (oe_hintclippedtext in foptionsedit) and 
           editor.lasttextclipped(gettextcliprect) and getshowhint then begin

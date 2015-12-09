@@ -18,17 +18,16 @@ order15=0
 order16=0
 order17=0
 order18=0
+order19=0
+order20=0
 [projectoptions]
-projectdir=/home/mse/packs/standard/git/mseide-msegui/tools
-projectfilename=/home/mse/packs/standard/git/mseide-msegui/tools/form2pas.prj
-mainfile=form2pas.pas
-targetfile=form2pas${EXEEXT}
+mainfile=
+targetfile=
 messageoutputfile=
 makecommand=${COMPILER}
 makedir=
-unitdirs=3
+unitdirs=2
  ${MSELIBDIR}kernel/$TARGETOSDIR/
- ${MSELIBDIR}kernel/
  ${MSELIBDIR}*/
 unitpref=-Fu
 incpref=-Fi
@@ -38,10 +37,10 @@ targpref=-o
 befcommand=0
 aftcommand=0
 makeoptions=4
- -Xg -l -Mobjfpc -Sh -Fcutf8
- -gl
+ -l -Mobjfpc -Sh -Fcutf8
+ -gl -O-
  -B
- -OG2p3 -XX -CX -Xs
+ -O2 -XX -CX -Xs
 codetemplatedirs=1
  ${TEMPLATEDIR}
 toolmenus=0
@@ -68,39 +67,51 @@ newfisources=3
  ${TEMPLATEDIR}default/program.pas
  ${TEMPLATEDIR}default/unit.pas
  
-newfonames=8
+newfonames=11
  Mainform
  Simple Form
  Docking Form
  Datamodule
  Subform
+ Scrollboxform
+ Tabform
+ Dockpanel
  Report
  Scriptform
  Inherited Form
-newfonamebases=8
+newfonamebases=11
  form
  form
  form
  module
  form
+ form
+ form
+ form
  report
  script
  form
-newfosources=8
+newfosources=11
  ${TEMPLATEDIR}default/mainform.pas
  ${TEMPLATEDIR}default/simpleform.pas
  ${TEMPLATEDIR}default/dockingform.pas
  ${TEMPLATEDIR}default/datamodule.pas
  ${TEMPLATEDIR}default/subform.pas
+ ${TEMPLATEDIR}default/scrollboxform.pas
+ ${TEMPLATEDIR}default/tabform.pas
+ ${TEMPLATEDIR}default/dockpanelform.pas
  ${TEMPLATEDIR}default/report.pas
  ${TEMPLATEDIR}default/pascform.pas
  ${TEMPLATEDIR}default/inheritedform.pas
-newfoforms=8
+newfoforms=11
  ${TEMPLATEDIR}default/mainform.mfm
  ${TEMPLATEDIR}default/simpleform.mfm
  ${TEMPLATEDIR}default/dockingform.mfm
  ${TEMPLATEDIR}default/datamodule.mfm
  ${TEMPLATEDIR}default/subform.mfm
+ ${TEMPLATEDIR}default/scrollboxform.mfm
+ ${TEMPLATEDIR}default/tabform.mfm
+ ${TEMPLATEDIR}default/dockpanelform.mfm
  ${TEMPLATEDIR}default/report.mfm
  ${TEMPLATEDIR}default/pascform.mfm
  ${TEMPLATEDIR}default/inheritedform.mfm
@@ -112,68 +123,8 @@ checkmethods=1
 colorerror=-1610612712
 colorwarning=-1610612717
 colornote=-1610612716
-usercolors=30
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
- 0
-usercolorcomment=30
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
+usercolors=0
+usercolorcomment=0
 formatmacronames=0
 formatmacrovalues=0
 settingsfile=
@@ -193,21 +144,14 @@ makeoptionson=4
  34
  32
 aftcommandon=0
-unitdirson=3
+unitdirson=2
  65599
- 196671
  65599
 macroon=0
 macronames=0
 macrovalues=0
 macrogroup=0
-groupcomments=6
- 
- 
- 
- 
- 
- 
+groupcomments=0
 toolsave=0
 toolhide=0
 toolparse=0
@@ -221,7 +165,10 @@ fontoptions=0
 fontxscales=0
 expandprojectfilemacros=0
 loadprojectfile=0
-newinheritedforms=8
+newinheritedforms=11
+ 0
+ 0
+ 0
  0
  0
  0
@@ -366,18 +313,17 @@ panels=2
  panel2
 units=
  (
- a=0,4132,6,Pascal Units
+ a=0,4132,0,Pascal Units
  )
 cmodules=
  (
- a=0,4132,6,C Modules
+ a=0,4132,0,C Modules
  )
 files=
  (
- a=0,4132,6,Text Files
+ a=0,4132,0,Text Files
  )
 [componentstore]
-storedir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
 filename=
 [components]
 [selecteditpage]
@@ -396,36 +342,47 @@ hintheight=0
 finddtext=
 findhistory=0
 findoptions=1
-editpos=1
- 0,0
-bookmarks0=0
-sourcefiles=1
- /home/mse/packs/standard/git/mseide-msegui/tools/form2pas.pas
-relpaths=1
- form2pas.pas
-ismoduletexts=1
- 0
+editpos=0
+sourcefiles=0
+relpaths=0
+ismoduletexts=0
 modules=0
 moduleoptions=0
 visiblemodules=0
 nomenumodules=0
 [sourcefo.tabwidget]
-tabsize=134
+tabsize=127
 firsttab=0
-index=0
+index=-1
 [layout]
-windowlayout=532
+windowlayout=544
  [mainfo.openform]
  filenames=0
+ filehistory=0
+ filefilterindex=0
+ filefilter=
  filecolwidth=0
  x=0
  y=0
  cx=0
  cy=0
- filehistory=0
- filefilterindex=0
- filefilter=
  [mainfo.projectfiledia]
+ filenames=1
+  /home/mse/packs/standard/git/mseide-msegui/apps/ide/templates/layoutgui.prj
+ lastdir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/templates/
+ filehistory=10
+  /home/mse/packs/standard/git/mseide-msegui/apps/ide/templates/layoutgui.prj
+  /home/mse/packs/standard/git/mseuniverse/tools/msegit/mse_msegit.prj
+  /home/mse/packs/standard/git/mseide-msegui/apps/ide/mse_mseide.prj
+  /home/mse/proj/msegui/testcase/chefou/msegui_zengl/test.prj
+  /home/mse/packs/standard/git/mseuniverse/samples/widgets/layout/mse_layout.prj
+  /home/mse/packs/standard/git/mselang/mselang/mse_mselang.prj
+  /home/mse/packs/standard/git/sak/sak/sak_mse/examples/mse_mse_sak_demo.prj
+  /home/mse/packs/standard/git/mseuniverse/tools/msespice/mse_msespice.prj
+  /home/mse/proj/msegui/testcase/mse/process/terminate/terminateprocess.prj
+  /home/mse/proj/test3/test.prj
+ filefilterindex=0
+ filefilter=*.prj
  filecolwidth=174
  x=0
  y=0
@@ -433,16 +390,14 @@ windowlayout=532
  cy=0
  [mainfo.openfile]
  filenames=0
- filecolwidth=174
+ filehistory=0
+ filefilterindex=0
+ filefilter=
+ filecolwidth=0
  x=0
  y=0
  cx=0
  cy=0
- filehistory=2
-  /home/mse/packs/standard/git/mseide-msegui/tools/form2pas.pas
-  /home/mse/packs/standard/git/mseide-msegui/tools/bmp2pas.pas
- filefilterindex=0
- filefilter="*.pp" "*.pas" "*.inc" "*.dpr" "*.lpr"
  [mainfo.basedock]
  splitdir=2
  useroptions=146560
@@ -474,15 +429,15 @@ windowlayout=532
  ny=0
  ncx=0
  ncy=0
- x=697
- y=554
- cx=323
- cy=169
+ x=209
+ y=385
+ cx=368
+ cy=137
  rcx=0
  rcy=0
  wsize=0
  active=0
- visible=1
+ visible=0
  [threadsfo]
  splitdir=0
  useroptions=16489
@@ -504,7 +459,7 @@ windowlayout=532
  [memoryfo]
  splitdir=0
  useroptions=16507
- stackedunder=componentpalettefo
+ stackedunder=cpui386fo
  parent=
  mdistate=0
  nx=0
@@ -531,7 +486,7 @@ windowlayout=532
  [disassfo]
  splitdir=0
  useroptions=16491
- stackedunder=mainfo.panel2
+ stackedunder=
  parent=
  mdistate=0
  nx=0
@@ -550,7 +505,7 @@ windowlayout=532
  [findinfilefo]
  splitdir=0
  useroptions=16491
- stackedunder=disassfo
+ stackedunder=
  parent=
  mdistate=0
  nx=0
@@ -605,7 +560,7 @@ windowlayout=532
  x=0
  y=0
  cx=313
- cy=276
+ cy=295
  rcx=0
  rcy=0
  [watchpointsfo]
@@ -669,7 +624,7 @@ windowlayout=532
  [objectinspectorfo]
  splitdir=0
  useroptions=16491
- stackedunder=breakpointsfo
+ stackedunder=mainfo.panel2
  parent=
  mdistate=0
  nx=0
@@ -684,7 +639,7 @@ windowlayout=532
  rcy=0
  wsize=0
  active=0
- visible=0
+ visible=1
  [objectinspectorfo.grid]
  propcolwidthref=286
  width0=105
@@ -694,7 +649,7 @@ windowlayout=532
  [symbolfo]
  splitdir=0
  useroptions=16507
- stackedunder=findinfilefo
+ stackedunder=
  parent=
  mdistate=0
  nx=0
@@ -729,9 +684,9 @@ windowlayout=532
  ncx=0
  ncy=0
  x=0
- y=279
+ y=298
  cx=313
- cy=221
+ cy=236
  rcx=0
  rcy=0
  [watchfo.grid]
@@ -772,7 +727,7 @@ windowlayout=532
  [componentstorefo]
  splitdir=0
  useroptions=24699
- stackedunder=symbolfo
+ stackedunder=
  parent=
  mdistate=0
  nx=0
@@ -798,44 +753,42 @@ windowlayout=532
  width3=185
  sortdescend3=0
  [componentstorefo.storefiledialog]
- filenames=1
-  /home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
- filecolwidth=0
- x=0
- y=0
- cx=0
- cy=0
- lastdir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
- filehistory=0
- filefilterindex=0
- filefilter=
- [componentstorefo.groupfiledialog]
- filenames=1
-  /home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
- filecolwidth=0
- x=0
- y=0
- cx=0
- cy=0
- lastdir=/home/mse/packs/standard/git/mseide-msegui/apps/ide/compstore/
- filehistory=0
- filefilterindex=0
- filefilter=
- [componentstorefo.compfiledialog]
  filenames=0
- filecolwidth=0
- x=0
- y=0
- cx=0
- cy=0
  lastdir=
  filehistory=0
  filefilterindex=0
  filefilter=
+ filecolwidth=0
+ x=0
+ y=0
+ cx=0
+ cy=0
+ [componentstorefo.groupfiledialog]
+ filenames=0
+ lastdir=
+ filehistory=0
+ filefilterindex=0
+ filefilter=
+ filecolwidth=0
+ x=0
+ y=0
+ cx=0
+ cy=0
+ [componentstorefo.compfiledialog]
+ filenames=0
+ lastdir=
+ filehistory=0
+ filefilterindex=0
+ filefilter=
+ filecolwidth=0
+ x=0
+ y=0
+ cx=0
+ cy=0
  [componentpalettefo]
  splitdir=0
  useroptions=24683
- stackedunder=componentstorefo
+ stackedunder=objectinspectorfo
  parent=
  mdistate=0
  nx=0
@@ -850,7 +803,7 @@ windowlayout=532
  rcy=0
  wsize=0
  active=0
- visible=0
+ visible=1
  [componentpalettefo.componentpages]
  activetab=0
  [debuggerfo]
@@ -900,19 +853,19 @@ windowlayout=532
  ny=0
  ncx=0
  ncy=0
- x=335
- y=25
+ x=337
+ y=295
  cx=273
  cy=207
  rcx=0
  rcy=0
  wsize=0
  active=0
- visible=1
+ visible=0
  [mainfo.panel1]
  splitdir=2
  useroptions=33586667
- stackedunder=targetconsolefo
+ stackedunder=componentpalettefo
  parent=
  mdistate=0
  nx=0
@@ -931,7 +884,7 @@ windowlayout=532
  [mainfo.panel2]
  splitdir=2
  useroptions=33586667
- stackedunder=cpui386fo
+ stackedunder=mainfo
  parent=
  mdistate=0
  nx=0
@@ -939,9 +892,9 @@ windowlayout=532
  ncx=0
  ncy=0
  x=697
- y=25
+ y=189
  cx=323
- cy=500
+ cy=534
  rcx=0
  rcy=0
  wsize=0
