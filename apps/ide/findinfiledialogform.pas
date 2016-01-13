@@ -1,5 +1,5 @@
 { MSEide Copyright (c) 1999-2016 by Martin Schreiber
-   
+
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -204,6 +204,8 @@ begin
  if avalue then begin
   inopenfiles.value:= false;
   incurrentfile.value:= false;
+  if inprojectdir.value then
+    dir.value := filedir(mainfo.projectname);
  end;
 end;
 
