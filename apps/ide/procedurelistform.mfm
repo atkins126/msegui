@@ -71,13 +71,13 @@ object procedurelistfo: tprocedurelistfo
     datacols.count = 4
     datacols.coloractive = 158
     datacols.colorfocused = 8758271
-    datacols.options = [co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
+    datacols.options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
     datacols.items = <    
       item
         coloractive = 158
         colorfocused = 8758271
         width = 30
-        options = [co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
+        options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
           ''
@@ -92,7 +92,7 @@ object procedurelistfo: tprocedurelistfo
         coloractive = 158
         colorfocused = 8758271
         width = 300
-        options = [co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
+        options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
           ''
@@ -107,7 +107,7 @@ object procedurelistfo: tprocedurelistfo
         coloractive = 158
         colorfocused = 8758271
         width = 130
-        options = [co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
+        options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
           ''
@@ -122,7 +122,7 @@ object procedurelistfo: tprocedurelistfo
         coloractive = 158
         colorfocused = 8758271
         width = 70
-        options = [co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
+        options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
           ''
