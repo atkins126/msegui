@@ -1369,7 +1369,7 @@ object actionsmo: tactionsmo
     top = 152
   end
   object shortcuts: tshortcutcontroller
-    actions.count = 97
+    actions.count = 98
     actions.items = <    
       item
         dispname = 'File'
@@ -1455,6 +1455,14 @@ object actionsmo: tactionsmo
         sc = (
           1
           24646
+        )
+      end    
+      item
+        action = procedurelist
+        dispname = 'Procedure List...'
+        sc = (
+          1
+          16455
         )
       end    
       item
