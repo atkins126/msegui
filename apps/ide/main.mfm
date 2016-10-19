@@ -197,7 +197,7 @@ object mainfo: tmainfo
         state = [as_localcaption]
       end    
       item
-        submenu.count = 6
+        submenu.count = 7
         submenu.items = <        
           item
             action = actionsmo.line
@@ -218,6 +218,11 @@ object mainfo: tmainfo
             action = actionsmo.findcompallact
             caption = 'Find &Component'
             state = [as_localcaption, as_localshortcut, as_localshortcut1]
+          end        
+          item
+            action = actionsmo.procedurelist
+            caption = 'Procedure List'
+            state = [as_localcaption]
           end>
         caption = '&Search'
         name = 'search'

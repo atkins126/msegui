@@ -1,8 +1,8 @@
 object actionsmo: tactionsmo
   bounds_cx = 543
   bounds_cy = 435
-  left = 7
-  top = 160
+  left = 45
+  top = 1172
   moduleclassname = 'tmsedatamodule'
   object makeact: taction
     Tag = 1
@@ -2516,6 +2516,16 @@ object actionsmo: tactionsmo
     sc = (
       1
       24663
+    )
+  end
+  object procedurelist: taction
+    caption = 'Procedure List'
+    onexecute = procedurelistonexecute
+    left = 480
+    top = 200
+    sc = (
+      1
+      16455
     )
   end
 end

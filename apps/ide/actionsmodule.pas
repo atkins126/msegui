@@ -1,5 +1,5 @@
 { MSEide Copyright (c) 1999-2014 by Martin Schreiber
-   
+
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -24,7 +24,7 @@ uses
  msedatamodules,mseglob,msestat,mseifiglob,msegraphics,msegraphutils,mseguiglob,
  msemenus,msesimplewidgets,msewidgets,projecttreeform,msestringcontainer,
  targetconsole,mseificomp,mseificompglob,mclasses;
- 
+
 type
  stringconsts = (
   ac_configuremseide, //0 Configure MSEide
@@ -223,6 +223,7 @@ type
    comment: taction;
    uncomment: taction;
    copyword: taction;
+   procedurelist: taction;
    procedure findinfileonexecute(const sender: tobject);
 
    //file
@@ -300,6 +301,7 @@ type
    procedure enablecomment(const sender: tcustomaction);
    procedure enableuncomment(const sender: tcustomaction);
    procedure selectwordactiononexecute(const sender: TObject);
+   procedure procedurelistonexecute(const sender: TObject);
   private
    function filterfindcomp(const acomponent: tcomponent): boolean;
   public
@@ -309,7 +311,7 @@ type
 
 var
  actionsmo: tactionsmo;
- 
+
 procedure configureide;
 
 implementation
@@ -317,8 +319,8 @@ uses
  main,make,actionsmodule_mfm,sourceform,msedesigner,msetypes,msefiledialog,
  projectoptionsform,findinfileform,breakpointsform,watchform,selecteditpageform,
  disassform,printform,msegdbutils,mseintegerenter,msesettings,
- componentstore,cpuform,sysutils,msecomptree,mseformatstr;
- 
+ componentstore,cpuform,sysutils,msecomptree,mseformatstr, procedurelistform;
+
 procedure configureide;
 begin
  disassfo.resetshortcuts();
@@ -883,5 +885,11 @@ begin
   projectoptionsmodified();
  end;
 end;
+
+procedure tactionsmo.procedurelistonexecute(const sender: TObject);
+begin
+  doProcedureList;
+end;
+
 
 end.
