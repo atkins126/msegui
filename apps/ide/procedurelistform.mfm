@@ -59,12 +59,14 @@ object procedurelistfo: tprocedurelistfo
     datacols.count = 4
     datacols.coloractive = 158
     datacols.colorfocused = 8758271
+    datacols.fontactivenum = 0
     datacols.options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
     datacols.items = <    
       item
         coloractive = 158
         colorfocused = 8758271
         width = 30
+        fontactivenum = 0
         options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
@@ -80,6 +82,7 @@ object procedurelistfo: tprocedurelistfo
         coloractive = 158
         colorfocused = 8758271
         width = 300
+        fontactivenum = 0
         options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
@@ -95,6 +98,7 @@ object procedurelistfo: tprocedurelistfo
         coloractive = 158
         colorfocused = 8758271
         width = 130
+        fontactivenum = 0
         options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
@@ -110,6 +114,7 @@ object procedurelistfo: tprocedurelistfo
         coloractive = 158
         colorfocused = 8758271
         width = 70
+        fontactivenum = 0
         options = [co_nofocus, co_rowselect, co_savevalue, co_savestate, co_mousescrollrow]
         datalist.data = (
           ''
@@ -140,6 +145,13 @@ object procedurelistfo: tprocedurelistfo
           end>
       end>
     rowcount = 5
+    rowfonts.count = 1
+    rowfonts.items = <    
+      item
+        color = -1610612730
+        name = 'stf_default'
+        localprops = [flp_color]
+      end>
     reffontheight = 14
   end
   object lblStatus: tstringdisp
