@@ -65,6 +65,9 @@ type
    procedure formdestroy(const sender: TObject);
    procedure FilterTextChanged(const sender: tcustomedit; var atext: msestring);
    procedure FilterTextKeyDown(const sender: twidget; var ainfo: keyeventinfoty);
+   procedure ResultGridKeyDown(const sender: twidget;
+                   var ainfo: keyeventinfoty);
+   procedure JumpToSelectedLine;
  private
     FFilename: String;
     FLanguage: TSourceLanguage;
@@ -733,10 +736,6 @@ end;
 
 procedure tprocedurelistfo.FilterTextKeyDown(const sender: twidget;
                var ainfo: keyeventinfoty);
-var
-  int1: int32;
-  lGotoLine: integer;
-  c: gridcoordty;
 begin
   include(ainfo.eventstate,es_processed);
   case ainfo.key of
@@ -753,12 +752,7 @@ begin
     key_Return:
         begin
           { Jump to the line of code for the procedure we selected. }
-          c.row := grdProcedures.Row;
-          c.col := 3;
-          lGotoLine := StrToInt(grdProcedures.Items[c]);
-          int1 := sourcefo.activepage.grid.rowwindowpos;
-          sourcefo.activepage.grid.row := lGotoLine;
-          sourcefo.activepage.grid.rowwindowpos := int1;
+          JumpToSelectedLine;
           Close;
         end;
 {
@@ -772,6 +766,38 @@ begin
              exclude(ainfo.eventstate,es_processed); //unknown key
          end;
   end;
+end;
+
+procedure tprocedurelistfo.ResultGridKeyDown(const sender: twidget;
+               var ainfo: keyeventinfoty);
+begin
+  include(ainfo.eventstate,es_processed);
+  case ainfo.key of
+    key_Return:
+        begin
+          { Jump to the line of code for the procedure we selected. }
+          JumpToSelectedLine;
+          Close;
+        end;
+     else
+        begin
+          exclude(ainfo.eventstate,es_processed); //unknown key
+        end;
+  end;
+end;
+
+procedure tprocedurelistfo.JumpToSelectedLine;
+var
+  int1: int32;
+  lGotoLine: integer;
+  c: gridcoordty;
+begin
+  c.row := grdProcedures.Row;
+  c.col := 3;
+  lGotoLine := StrToInt(grdProcedures.Items[c]);
+  int1 := sourcefo.activepage.grid.rowwindowpos;
+  sourcefo.activepage.grid.row := lGotoLine;
+  sourcefo.activepage.grid.rowwindowpos := int1;
 end;
 
 { TSimpleEngine }

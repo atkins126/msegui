@@ -32,15 +32,15 @@ object procedurelistfo: tprocedurelistfo
     frame.localprops = []
     frame.localprops1 = []
     frame.outerframe = (
-      47
+      45
       0
       0
       0
     )
     taborder = 1
-    bounds_x = 17
+    bounds_x = 19
     bounds_y = 37
-    bounds_cx = 291
+    bounds_cx = 289
     optionsedit = [oe_undoonesc, oe_closequery, oe_checkmrcancel, oe_shiftreturn, oe_eatreturn, oe_resetselectonexit, oe_exitoncursor, oe_endonenter, oe_autoselectonfirstclick, oe_focusrectonreadonly]
     ontextedited = FilterTextChanged
     onkeydown = FilterTextKeyDown
@@ -55,6 +55,7 @@ object procedurelistfo: tprocedurelistfo
     bounds_cx = 562
     bounds_cy = 236
     anchors = [an_left, an_top, an_right, an_bottom]
+    onkeydown = ResultGridKeyDown
     optionsgrid = [og_colsizing, og_focuscellonenter, og_colchangeontabkey, og_wrapcol, og_autopopup, og_mousescrollcol]
     datacols.count = 4
     datacols.coloractive = 158
@@ -175,15 +176,15 @@ object procedurelistfo: tprocedurelistfo
       item
       end>
     frame.outerframe = (
-      50
+      48
       0
       0
       0
     )
     taborder = 2
-    bounds_x = 342
+    bounds_x = 344
     bounds_y = 37
-    bounds_cx = 230
+    bounds_cx = 228
     dropdown.cols.count = 1
     dropdown.cols.items = <    
       item
