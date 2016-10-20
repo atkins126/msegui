@@ -148,7 +148,7 @@ writeln('>> FormCreated');
   FLanguage := ltPas;
   FSearchAll := True; // search anywhere in a method name
   if Assigned(sourcefo.activepage) then
-    FFilename := sourcefo.activepage.filename
+    FFilename := sourcefo.activepage.filepath
   else
     Close;
   LoadTime := GetTickCount;
