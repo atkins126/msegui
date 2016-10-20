@@ -12,7 +12,7 @@ object procedurelistfo: tprocedurelistfo
     326
   )
   optionswindow = [wo_dialog]
-  options = [fo_freeonclose, fo_autoreadstat, fo_autowritestat, fo_savepos, fo_savezorder, fo_savestate]
+  options = [fo_freeonclose, fo_cancelonesc, fo_autoreadstat, fo_autowritestat, fo_savepos, fo_savezorder, fo_savestate]
   caption = 'Procedure List'
   oncreated = formcreated
   ondestroy = formdestroy
@@ -26,42 +26,30 @@ object procedurelistfo: tprocedurelistfo
     bounds_cy = 32
     anchors = [an_left, an_top, an_right]
   end
-  object tlabel1: tlabel
-    taborder = 1
-    bounds_x = 8
-    bounds_y = 40
-    bounds_cx = 46
-    bounds_cy = 14
-    caption = 'Search:'
-    reffontheight = 14
-  end
   object edtSearch: tedit
-    optionswidget = [ow_mousefocus, ow_tabfocus, ow_destroywidgets]
+    frame.caption = 'Search'
+    frame.captionpos = cp_left
     frame.localprops = []
     frame.localprops1 = []
-    taborder = 2
-    bounds_x = 64
+    frame.outerframe = (
+      47
+      0
+      0
+      0
+    )
+    taborder = 1
+    bounds_x = 17
     bounds_y = 37
-    bounds_cx = 244
+    bounds_cx = 291
     optionsedit = [oe_undoonesc, oe_closequery, oe_checkmrcancel, oe_shiftreturn, oe_eatreturn, oe_resetselectonexit, oe_exitoncursor, oe_endonenter, oe_autoselectonfirstclick, oe_focusrectonreadonly]
     ontextedited = FilterTextChanged
     onkeydown = FilterTextKeyDown
     reffontheight = 14
   end
-  object tlabel2: tlabel
-    taborder = 4
-    bounds_x = 336
-    bounds_y = 40
-    bounds_cx = 49
-    bounds_cy = 14
-    caption = 'Objects:'
-    reffontheight = 14
-  end
   object grdProcedures: tstringgrid
-    optionswidget = [ow_mousefocus, ow_tabfocus, ow_focusbackonesc, ow_mousewheel, ow_destroywidgets]
     frame.localprops = []
     frame.localprops1 = []
-    taborder = 5
+    taborder = 3
     bounds_x = 8
     bounds_y = 65
     bounds_cx = 562
@@ -157,7 +145,7 @@ object procedurelistfo: tprocedurelistfo
   object lblStatus: tstringdisp
     frame.localprops = []
     frame.localprops1 = []
-    taborder = 6
+    taborder = 4
     bounds_x = 8
     bounds_y = 307
     bounds_cx = 564
@@ -166,17 +154,24 @@ object procedurelistfo: tprocedurelistfo
     reffontheight = 14
   end
   object cbObjects: tdropdownlistedit
-    optionswidget = [ow_mousefocus, ow_tabfocus, ow_destroywidgets]
+    frame.caption = 'Objects'
+    frame.captionpos = cp_left
     frame.localprops = []
     frame.localprops1 = []
     frame.buttons.count = 1
     frame.buttons.items = <    
       item
       end>
-    taborder = 3
-    bounds_x = 392
+    frame.outerframe = (
+      50
+      0
+      0
+      0
+    )
+    taborder = 2
+    bounds_x = 342
     bounds_y = 37
-    bounds_cx = 180
+    bounds_cx = 230
     dropdown.cols.count = 1
     dropdown.cols.items = <    
       item

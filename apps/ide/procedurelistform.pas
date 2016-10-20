@@ -12,7 +12,7 @@ interface
 
 uses
  msetypes,mseglob,mseguiglob,mseguiintf,mseapplication,msestat,msegui,
- msegraphics,msegraphutils,mseclasses,mseforms,msetoolbar,
+ msegraphics,msegraphutils,mseclasses,mseforms,msetoolbar,mseevent,
  msesimplewidgets,mseedit,msestrings,sysutils,
  msedataedits,msegrids,pparser, pastree,
  Classes,msedispwidgets,mserichstring;
@@ -57,9 +57,7 @@ type
 
  tprocedurelistfo = class(tmseform)
    ttoolbar1: ttoolbar;
-   tlabel1: tlabel;
    edtSearch: tedit;
-   tlabel2: tlabel;
    grdProcedures: tstringgrid;
    lblStatus: tstringdisp;
    cbObjects: tdropdownlistedit;
@@ -125,7 +123,8 @@ writeln('>> doProcedureList');
     {$ifdef gdebug}
     writeln('  before calling fo.free');
     {$endif}
-    FreeAndNil(fo);
+//    FreeAndNil(fo);
+//set procedurelistfo.options fo_freeonclose instead
     {$ifdef gdebug}
     writeln('  after calling fo.free');
     {$endif}
@@ -720,7 +719,7 @@ writeln('>> FormDestroy');
       FProcList.Objects[i].Free;
     FreeAndNil(FProcList);
   end;
-  inherited Destroy;
+/////////  inherited Destroy;
 {$ifdef gTrace}
 writeln('<< FormDestroy');
 {$endif}
@@ -739,16 +738,17 @@ var
   lGotoLine: integer;
   c: gridcoordty;
 begin
+  include(ainfo.eventstate,es_processed);
   case ainfo.key of
     key_Up:
         begin
           grdProcedures.rowup();
-          edtSearch.SetFocus;
+//          edtSearch.SetFocus;
         end;
     key_Down:
         begin
           grdProcedures.rowdown();
-          edtSearch.SetFocus;
+//          edtSearch.SetFocus;
         end;
     key_Return:
         begin
@@ -761,10 +761,16 @@ begin
           sourcefo.activepage.grid.rowwindowpos := int1;
           Close;
         end;
+{
    key_Escape:
         begin
           Close;
         end;
+}
+     else
+         begin
+             exclude(ainfo.eventstate,es_processed); //unknown key
+         end;
   end;
 end;
 
